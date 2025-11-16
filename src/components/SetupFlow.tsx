@@ -31,7 +31,7 @@ export default function SetupFlow({ onComplete }: SetupFlowProps) {
           
             ...formData,
           },
-          { onConflict: 'user_id'}
+          { onConflict: 'id'}
         ]);
 
       if (upsertError) throw upsertError;
