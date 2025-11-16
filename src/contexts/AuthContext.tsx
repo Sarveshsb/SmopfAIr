@@ -32,22 +32,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  try {
+    // Try normal sign-in first
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
 
-      if (error && error.status === 400) {
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email, password });
-        if (signUpError) {
-          return { error: signUpError };
-        }
-        return { data: signUpData, error: null };
+    // If user does not exist → Supabase returns 400
+    if (error && error.status === 400) {
+      // Create new account automatically
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password
+      });
+
+      if (signUpError) {
+        return { error: signUpError };
       }
 
-      return { data, error };
-    } catch (err: any) {
-      return { error: err };
+      // Now login again after signup
+      const { data: finalLogin, error: finalErr } =
+        await supabase.auth.signInWithPassword({ email, password });
+
+      return { data: finalLogin, error: finalErr };
     }
-  };
+
+    return { data, error };
+  } catch (err: any) {
+    return { error: err };
+  }
+};
 
   const signOut = async () => {
     await supabase.auth.signOut();
