@@ -20,18 +20,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { data: subscription } = supabase.auth.onAuthStateChange(
     async (event, session) => {
       if (!session) {
-        // Create a guest account automatically
+        const guestEmail = crypto.randomUUID() + "@guest.com";
+        const guestPassword = "guest123";
+
+        // Create guest account
         await supabase.auth.signUp({
-          email: crypto.randomUUID() + "@guest.com",
-          password: "guest123"
+          email: guestEmail,
+          password: guestPassword,
         });
+
+        // Immediately sign in
+        const { data: loginData } = await supabase.auth.signInWithPassword({
+          email: guestEmail,
+          password: guestPassword,
+        });
+
+        session = loginData?.session ?? null; // <-- FIXED
       }
+
       setUser(session?.user ?? null);
       setLoading(false);
     }
   );
 
-  return () => subscription?.unsubscribe();
+  return () => subscription.subscription.unsubscribe();
 }, []);
 
   const signUp = async (email: string, password: string) => {
