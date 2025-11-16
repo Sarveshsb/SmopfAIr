@@ -255,7 +255,7 @@ export default function SalesTracking({ shopOwnerId }: SalesTrackingProps) {
                 <YAxis />
                 <Tooltip
                   contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px', color: '#fff' }}
-                  formatter={(value) => `₹${value.toFixed(0)}`}
+                  formatter={(value) => `₹${Number(value).toFixed(0)}`}
                 />
                 <Bar dataKey="revenue" fill="#3B82F6" radius={[8, 8, 0, 0]} />
               </BarChart>
@@ -276,13 +276,13 @@ export default function SalesTracking({ shopOwnerId }: SalesTrackingProps) {
                   fill="#8884d8"
                   dataKey="revenue"
                 >
-                  {chartData.map((entry, index) => (
+                  {chartData.map((_entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
                 <Tooltip
                   contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px', color: '#fff' }}
-                  formatter={(value) => `₹${value.toFixed(0)}`}
+                  formatter={(value) => `₹${Number(value).toFixed(0)}`}
                 />
               </PieChart>
             </ResponsiveContainer>
