@@ -17,15 +17,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setUser(session?.user ?? null);
-        setLoading(false);
+  const { data: subscription } = supabase.auth.onAuthStateChange(
+    async (event, session) => {
+      if (!session) {
+        // Create a guest account automatically
+        await supabase.auth.signUp({
+          email: crypto.randomUUID() + "@guest.com",
+          password: "guest123"
+        });
       }
-    );
+      setUser(session?.user ?? null);
+      setLoading(false);
+    }
+  );
 
-    return () => subscription?.unsubscribe();
-  }, []);
+  return () => subscription?.unsubscribe();
+}, []);
 
   const signUp = async (email: string, password: string) => {
     return supabase.auth.signUp({ email, password });
