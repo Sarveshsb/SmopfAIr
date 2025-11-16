@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+
 import { supabase } from '../lib/supabase';
 import { Store, User, Briefcase, MapPin, Globe } from 'lucide-react';
 
@@ -8,7 +8,6 @@ interface SetupFlowProps {
 }
 
 export default function SetupFlow({ onComplete }: SetupFlowProps) {
-  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
@@ -24,13 +23,12 @@ export default function SetupFlow({ onComplete }: SetupFlowProps) {
     setLoading(true);
 
     try {
-      if (!user) throw new Error('User not authenticated');
 
       const { error: upsertError } = await supabase
         .from('shop_owners')
         .upsert([
           {
-            user_id: user.id,
+          
             ...formData,
           },
           { onConflict: 'user_id'}
