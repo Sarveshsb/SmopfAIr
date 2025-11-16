@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+
 import { supabase } from '../lib/supabase';
 import Navigation from '../components/Navigation';
 import SetupFlow from '../components/SetupFlow';
@@ -12,7 +12,7 @@ import Insights from '../components/Insights';
 type TabType = 'overview' | 'products' | 'suppliers' | 'sales' | 'expenses' | 'analytics' | 'insights';
 
 export default function Dashboard() {
-  const { signOut } = useAuth();
+  
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [shopOwner, setShopOwner] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -79,13 +79,13 @@ export default function Dashboard() {
     }
   };
 
-  return (
+    return (
     <div className="min-h-screen bg-gray-50">
       <Navigation
         shopOwner={shopOwner}
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        onSignOut={signOut}
+        
       />
 
       <main className="max-w-7xl mx-auto px-4 py-8">
