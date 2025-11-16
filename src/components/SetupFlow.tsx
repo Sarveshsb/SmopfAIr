@@ -21,22 +21,22 @@ export default function SetupFlow({ onComplete }: SetupFlowProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
     setLoading(true);
 
     try {
       if (!user) throw new Error('User not authenticated');
 
-      const { error: insertError } = await supabase
+      const { error: upsertError } = await supabase
         .from('shop_owners')
-        .insert([
+        .upsert([
           {
             user_id: user.id,
             ...formData,
           },
+          { onConflict: 'user_id'}
         ]);
 
-      if (insertError) throw insertError;
+      if (upsertError) throw upsertError;
       onComplete();
     } catch (err: any) {
       setError(err.message || 'An error occurred');
