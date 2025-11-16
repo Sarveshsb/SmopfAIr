@@ -257,12 +257,12 @@ export default function Analytics({ shopOwnerId }: AnalyticsProps) {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, value }) => `${name.substring(0, 10)}: ₹${value}`}
+                  label={({ name, value }) => `${name?.substring?.(0, 10)}: ₹${value}`}
                   outerRadius={110}
                   fill="#8884d8"
                   dataKey="revenue"
                 >
-                  {productSales.slice(0, 6).map((entry, index) => (
+                  {productSales.slice(0, 6).map((_entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>

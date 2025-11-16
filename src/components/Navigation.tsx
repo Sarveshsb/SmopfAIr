@@ -7,14 +7,14 @@ interface NavigationProps {
   shopOwner: any;
   activeTab: TabType;
   onTabChange: (tab: TabType) => void;
-  onSignOut: () => Promise<void>;
+  
 }
 
 export default function Navigation({
   shopOwner,
   activeTab,
   onTabChange,
-  onSignOut,
+  
 }: NavigationProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -28,7 +28,7 @@ export default function Navigation({
   ];
 
   const handleSignOut = async () => {
-    await onSignOut();
+    window.location.reload();
   };
 
   return (
