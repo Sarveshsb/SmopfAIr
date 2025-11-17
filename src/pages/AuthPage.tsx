@@ -1,45 +1,25 @@
 import { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
 import { Store } from 'lucide-react';
+
 
 export default function AuthPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signIn } = useAuth();
+  
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
-    try {
-      const { error: signInError } = await signIn(email, password);
-      if (signInError) {
-        setError('Invalid credentials. Please try again.');
-      }
-    } catch (err: any) {
-      setError(err.message || 'An error occurred');
-    } finally {
-      setLoading(false);
-    }
-  };
+    
 
   const handleTestLogin = async () => {
     setError('');
     setLoading(true);
-    try {
-      const { error: signInError } = await signIn('test@smopfair.com', 'test123456');
-      if (signInError) {
-        setError('Demo login unavailable. Please create an account first.');
-      }
-    } catch (err: any) {
-      setError(err.message || 'An error occurred');
-    } finally {
-      setLoading(false);
-    }
-  };
+    
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center px-4">
@@ -121,5 +101,9 @@ export default function AuthPage() {
         </p>
       </div>
     </div>
-  );
+  )
+  }
+
+  }
 }
+  

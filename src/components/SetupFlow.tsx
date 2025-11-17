@@ -1,5 +1,4 @@
 import { useState } from 'react';
-
 import { supabase } from '../lib/supabase';
 import { Store, User, Briefcase, MapPin, Globe } from 'lucide-react';
 
@@ -23,18 +22,32 @@ export default function SetupFlow({ onComplete }: SetupFlowProps) {
     setLoading(true);
 
     try {
+      // 1️⃣ Get the logged-in user
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
 
+      if (userError) throw userError;
+      if (!user) throw new Error('User not logged in');
+
+      // 2️⃣ Upsert shop owner
       const { error: upsertError } = await supabase
         .from('shop_owners')
-        .upsert([
+        .upsert(
+          [
+            {
+              ...formData,
+              user_id: user.id, // NOW VALID
+            },
+          ],
           {
-          
-            ...formData,
-          },
-          { onConflict: 'id'}
-        ]);
+            onConflict: 'user_id', // correct unique column
+          }
+        );
 
       if (upsertError) throw upsertError;
+
       onComplete();
     } catch (err: any) {
       setError(err.message || 'An error occurred');
