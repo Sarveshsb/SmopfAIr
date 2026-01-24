@@ -1,205 +1,134 @@
 import { useState, useEffect } from 'react';
-
-import { supabase } from '../lib/supabase';
 import Navigation from '../components/Navigation';
-import SetupFlow from '../components/SetupFlow';
 import ProductManagement from '../components/ProductManagement';
 import SupplierManagement from '../components/SupplierManagement';
 import SalesTracking from '../components/SalesTracking';
 import Analytics from '../components/Analytics';
 import Insights from '../components/Insights';
+import ChatAssistant from '../components/ChatAssistant';
 
 type TabType = 'overview' | 'products' | 'suppliers' | 'sales' | 'expenses' | 'analytics' | 'insights';
 
-export default function Dashboard() {
-  
+interface DashboardProps {
+  shopData: {
+    shop_name: string;
+    business_type: string;
+  };
+}
+
+export default function Dashboard({ shopData }: DashboardProps) {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
-  const [shopOwner, setShopOwner] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [showSetup, setShowSetup] = useState(false);
+  const [products, setProducts] = useState<any[]>([]);
 
   useEffect(() => {
-    loadShopOwner();
-  }, []);
+    loadProducts();
+  }, [shopData.shop_name]);
 
-  const loadShopOwner = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data, error } = await supabase
-          .from('shop_owners')
-          .select('*')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (error) throw error;
-
-        if (!data) {
-          setShowSetup(true);
-        } else {
-          setShopOwner(data);
-        }
-      }
-    } catch (error) {
-      console.error('Error loading shop owner:', error);
-    } finally {
-      setLoading(false);
+  const loadProducts = () => {
+    const savedProducts = localStorage.getItem(`products_${shopData.shop_name}`);
+    if (savedProducts) {
+      setProducts(JSON.parse(savedProducts));
     }
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading dashboard...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (showSetup || !shopOwner) {
-    return <SetupFlow onComplete={() => loadShopOwner()} />;
-  }
 
   const renderContent = () => {
     switch (activeTab) {
       case 'products':
-        return <ProductManagement shopOwnerId={shopOwner.id} />;
+        return <ProductManagement shopData={shopData} onProductsChange={loadProducts} />;
       case 'suppliers':
-        return <SupplierManagement shopOwnerId={shopOwner.id} />;
+        return <SupplierManagement shopData={shopData} />;
       case 'sales':
-        return <SalesTracking shopOwnerId={shopOwner.id} />;
+        return <SalesTracking shopData={shopData} />;
       case 'analytics':
-        return <Analytics shopOwnerId={shopOwner.id} />;
+        return <Analytics shopData={shopData} />;
       case 'insights':
-        return <Insights shopOwnerId={shopOwner.id} />;
+        return <Insights shopData={shopData} />;
       default:
-        return <OverviewTab shopOwner={shopOwner} />;
-    }
-  };
-
-    return (
-    <div className="min-h-screen bg-gray-50">
-      <Navigation
-        shopOwner={shopOwner}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        
-      />
-
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        {renderContent()}
-      </main>
-    </div>
-  );
-}
-
-function OverviewTab({ shopOwner }: { shopOwner: any }) {
-  const [stats, setStats] = useState<any>(null);
-
-  useEffect(() => {
-    loadStats();
-  }, [shopOwner.id]);
-
-  const loadStats = async () => {
-    try {
-      const today = new Date().toISOString().split('T')[0];
-      const [productsRes, salesRes, suppliersRes] = await Promise.all([
-        supabase
-          .from('products')
-          .select('*')
-          .eq('shop_owner_id', shopOwner.id),
-        supabase
-          .from('sales_records')
-          .select('total_revenue')
-          .eq('shop_owner_id', shopOwner.id)
-          .eq('sale_date', today),
-        supabase
-          .from('suppliers')
-          .select('*')
-          .eq('shop_owner_id', shopOwner.id),
-      ]);
-
-      const products = productsRes.data || [];
-      const sales = salesRes.data || [];
-      const suppliers = suppliersRes.data || [];
-
-      const totalRevenue = sales.reduce((sum: number, s: any) => sum + s.total_revenue, 0);
-      const lowStockCount = products.filter((p: any) => p.quantity_on_hand <= p.reorder_level).length;
-
-      setStats({
-        totalProducts: products.length,
-        lowStockCount,
-        todayRevenue: totalRevenue,
-        totalSuppliers: suppliers.length,
-      });
-    } catch (error) {
-      console.error('Error loading stats:', error);
+        return <OverviewTab shopData={shopData} />;
     }
   };
 
   return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+      {/* Background Pattern */}
+      <div className="fixed inset-0 opacity-30">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_500px_at_50%_200px,#3b82f6,transparent)]"></div>
+        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-purple-300 to-transparent rounded-full mix-blend-multiply filter blur-3xl opacity-30"></div>
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-blue-300 to-transparent rounded-full mix-blend-multiply filter blur-3xl opacity-30"></div>
+      </div>
+
+      <div className="relative z-10">
+        <Navigation
+          shopData={shopData}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          products={products}
+        />
+
+        <main className="max-w-7xl mx-auto px-4 py-8">
+          {renderContent()}
+        </main>
+
+        <ChatAssistant shopData={shopData} products={products} />
+      </div>
+    </div>
+  );
+}
+
+function OverviewTab({ shopData }: { shopData: { shop_name: string; business_type: string } }) {
+  // Mock data for demonstration - in a real app, this would come from your database
+  const stats = {
+    totalProducts: 0,
+    lowStockCount: 0,
+    todayRevenue: 0,
+    totalSuppliers: 0,
+  };
+
+  return (
     <div className="space-y-8">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <InteractiveStatCard
           label="Shop Name"
-          value={shopOwner.shop_name}
+          value={shopData.shop_name}
           icon="🏪"
           gradient="from-blue-500 to-blue-600"
         />
         <InteractiveStatCard
           label="Business Type"
-          value={shopOwner.business_type}
+          value={shopData.business_type}
           icon="💼"
           gradient="from-purple-500 to-purple-600"
-        />
-        <InteractiveStatCard
-          label="Location"
-          value={shopOwner.location}
-          icon="📍"
-          gradient="from-green-500 to-green-600"
-        />
-        <InteractiveStatCard
-          label="Language"
-          value={shopOwner.preferred_language.toUpperCase()}
-          icon="🌐"
-          gradient="from-orange-500 to-orange-600"
         />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats && (
-          <>
-            <MetricBox
-              label="Total Products"
-              value={stats.totalProducts}
-              icon="📦"
-              color="from-indigo-500 to-indigo-600"
-            />
-            <MetricBox
-              label="Today's Revenue"
-              value={`₹${stats.todayRevenue.toFixed(0)}`}
-              icon="💰"
-              color="from-green-500 to-green-600"
-            />
-            <MetricBox
-              label="Low Stock Items"
-              value={stats.lowStockCount}
-              icon="⚠️"
-              color="from-red-500 to-red-600"
-            />
-            <MetricBox
-              label="Active Suppliers"
-              value={stats.totalSuppliers}
-              icon="🤝"
-              color="from-yellow-500 to-yellow-600"
-            />
-          </>
-        )}
+        <MetricBox
+          label="Total Products"
+          value={stats.totalProducts}
+          icon="📦"
+          color="from-indigo-500 to-indigo-600"
+        />
+        <MetricBox
+          label="Today's Revenue"
+          value={`₹${stats.todayRevenue.toFixed(0)}`}
+          icon="💰"
+          color="from-green-500 to-green-600"
+        />
+        <MetricBox
+          label="Low Stock Items"
+          value={stats.lowStockCount}
+          icon="⚠️"
+          color="from-red-500 to-red-600"
+        />
+        <MetricBox
+          label="Active Suppliers"
+          value={stats.totalSuppliers}
+          icon="🤝"
+          color="from-yellow-500 to-yellow-600"
+        />
       </div>
 
-      <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl shadow-2xl p-8 text-white overflow-hidden relative">
+      <div className="bg-gradient-to-br from-gray-900 via-blue-900 to-indigo-900 rounded-2xl shadow-2xl p-8 text-white overflow-hidden relative border border-white/10 backdrop-blur-sm">
         <div className="absolute top-0 right-0 w-40 h-40 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 -mr-20 -mt-20"></div>
         <div className="absolute bottom-0 left-0 w-40 h-40 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 -ml-20 -mb-20"></div>
 

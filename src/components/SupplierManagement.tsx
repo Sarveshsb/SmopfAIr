@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
-import { Plus, Edit2, Trash2, Star } from 'lucide-react';
+import { Plus, Edit2, Trash2, Star, Users } from 'lucide-react';
 
 interface Supplier {
   id: string;
@@ -16,12 +15,14 @@ interface Supplier {
 }
 
 interface SupplierManagementProps {
-  shopOwnerId: string;
+  shopData: {
+    shop_name: string;
+    business_type: string;
+  };
 }
 
-export default function SupplierManagement({ shopOwnerId }: SupplierManagementProps) {
+export default function SupplierManagement({ shopData }: SupplierManagementProps) {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -38,59 +39,54 @@ export default function SupplierManagement({ shopOwnerId }: SupplierManagementPr
 
   useEffect(() => {
     loadSuppliers();
-  }, [shopOwnerId]);
+  }, []);
 
-  const loadSuppliers = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('suppliers')
-        .select('*')
-        .eq('shop_owner_id', shopOwnerId)
-        .order('supplier_name');
-
-      if (error) throw error;
-      setSuppliers(data || []);
-    } catch (error) {
-      console.error('Error loading suppliers:', error);
-    } finally {
-      setLoading(false);
+  const loadSuppliers = () => {
+    const savedSuppliers = localStorage.getItem(`suppliers_${shopData.shop_name}`);
+    if (savedSuppliers) {
+      setSuppliers(JSON.parse(savedSuppliers));
     }
   };
 
-  const handleAddSupplier = async (e: React.FormEvent) => {
+  const saveSuppliers = (updatedSuppliers: Supplier[]) => {
+    localStorage.setItem(`suppliers_${shopData.shop_name}`, JSON.stringify(updatedSuppliers));
+    setSuppliers(updatedSuppliers);
+  };
+
+  const handleAddSupplier = (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      if (editingId) {
-        const { error } = await supabase
-          .from('suppliers')
-          .update(formData)
-          .eq('id', editingId);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('suppliers')
-          .insert([{ ...formData, shop_owner_id: shopOwnerId }]);
-        if (error) throw error;
-      }
-      resetForm();
-      loadSuppliers();
-    } catch (error) {
-      console.error('Error saving supplier:', error);
+    
+    let updatedSuppliers = [...suppliers];
+    
+    if (editingId) {
+      // Update existing supplier
+      updatedSuppliers = suppliers.map(supplier =>
+        supplier.id === editingId ? { ...formData, id: editingId } : supplier
+      );
+    } else {
+      // Add new supplier
+      const newSupplier: Supplier = {
+        ...formData,
+        id: Date.now().toString(),
+        contact_person: formData.contact_person || null,
+        phone_number: formData.phone_number || null,
+        email: formData.email || null,
+        location: formData.location || null,
+        average_delivery_days: formData.average_delivery_days || null,
+        notes: formData.notes || null,
+      };
+      updatedSuppliers = [...suppliers, newSupplier];
     }
+    
+    saveSuppliers(updatedSuppliers);
+    resetForm();
   };
 
-  const handleDeleteSupplier = async (id: string) => {
-    if (!confirm('Are you sure?')) return;
-    try {
-      const { error } = await supabase
-        .from('suppliers')
-        .delete()
-        .eq('id', id);
-      if (error) throw error;
-      loadSuppliers();
-    } catch (error) {
-      console.error('Error deleting supplier:', error);
-    }
+  const handleDeleteSupplier = (id: string) => {
+    if (!confirm('Are you sure you want to delete this supplier?')) return;
+    
+    const updatedSuppliers = suppliers.filter(supplier => supplier.id !== id);
+    saveSuppliers(updatedSuppliers);
   };
 
   const handleEditSupplier = (supplier: Supplier) => {
@@ -124,14 +120,6 @@ export default function SupplierManagement({ shopOwnerId }: SupplierManagementPr
     setEditingId(null);
     setShowForm(false);
   };
-
-  if (loading) {
-    return (
-      <div className="flex justify-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-      </div>
-    );
-  }
 
   const topSuppliers = suppliers
     .sort((a, b) => b.reliability_score - a.reliability_score)
@@ -179,7 +167,7 @@ export default function SupplierManagement({ shopOwnerId }: SupplierManagementPr
       )}
 
       {showForm && (
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-xl p-6 border border-white/50">
           <h2 className="text-lg font-semibold mb-4">
             {editingId ? 'Edit Supplier' : 'Add New Supplier'}
           </h2>
@@ -347,14 +335,32 @@ export default function SupplierManagement({ shopOwnerId }: SupplierManagementPr
 
       <div className="grid gap-4">
         {suppliers.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-lg">
-            <p className="text-gray-500">No suppliers yet. Add your first supplier to track purchases.</p>
+          <div className="text-center py-16 bg-white/90 backdrop-blur-sm rounded-xl border border-white/50">
+            <div className="flex justify-center mb-6">
+              <div className="w-20 h-20 bg-gradient-to-br from-green-100 to-emerald-100 rounded-full flex items-center justify-center">
+                <Users className="w-10 h-10 text-green-600" />
+              </div>
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">No Suppliers Yet</h3>
+            <p className="text-gray-500 mb-6 max-w-md mx-auto">
+              Track your suppliers to manage relationships, ratings, and ensure reliable supply chains for your {shopData.business_type.toLowerCase()}.
+            </p>
+            <button
+              onClick={() => {
+                resetForm();
+                setShowForm(true);
+              }}
+              className="flex items-center justify-center space-x-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-medium mx-auto"
+            >
+              <Plus className="w-5 h-5" />
+              <span>Add Your First Supplier</span>
+            </button>
           </div>
         ) : (
           suppliers.map((supplier) => (
             <div
               key={supplier.id}
-              className="bg-white rounded-lg shadow p-4 hover:shadow-lg transition"
+              className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-6 hover:shadow-xl transition-all duration-300 border border-white/50 hover:border-green-200 transform hover:-translate-y-1"
             >
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
                 <div>

@@ -1,6 +1,5 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
-import { Plus, Edit2, Trash2, AlertCircle } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Plus, Edit2, Trash2, AlertCircle, Upload, FileText } from 'lucide-react';
 
 interface Product {
   id: string;
@@ -13,14 +12,19 @@ interface Product {
 }
 
 interface ProductManagementProps {
-  shopOwnerId: string;
+  shopData: {
+    shop_name: string;
+    business_type: string;
+  };
+  onProductsChange?: () => void;
 }
 
-export default function ProductManagement({ shopOwnerId }: ProductManagementProps) {
+export default function ProductManagement({ shopData, onProductsChange }: ProductManagementProps) {
   const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [uploadStatus, setUploadStatus] = useState<string>('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     product_name: '',
     quantity_on_hand: 0,
@@ -32,59 +36,49 @@ export default function ProductManagement({ shopOwnerId }: ProductManagementProp
 
   useEffect(() => {
     loadProducts();
-  }, [shopOwnerId]);
+  }, []);
 
-  const loadProducts = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('shop_owner_id', shopOwnerId)
-        .order('product_name');
-
-      if (error) throw error;
-      setProducts(data || []);
-    } catch (error) {
-      console.error('Error loading products:', error);
-    } finally {
-      setLoading(false);
+  const loadProducts = () => {
+    const savedProducts = localStorage.getItem(`products_${shopData.shop_name}`);
+    if (savedProducts) {
+      setProducts(JSON.parse(savedProducts));
     }
   };
 
-  const handleAddProduct = async (e: React.FormEvent) => {
+  const saveProducts = (updatedProducts: Product[]) => {
+    localStorage.setItem(`products_${shopData.shop_name}`, JSON.stringify(updatedProducts));
+    setProducts(updatedProducts);
+    onProductsChange?.();
+  };
+
+  const handleAddProduct = (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      if (editingId) {
-        const { error } = await supabase
-          .from('products')
-          .update(formData)
-          .eq('id', editingId);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('products')
-          .insert([{ ...formData, shop_owner_id: shopOwnerId }]);
-        if (error) throw error;
-      }
-      resetForm();
-      loadProducts();
-    } catch (error) {
-      console.error('Error saving product:', error);
+    
+    let updatedProducts = [...products];
+    
+    if (editingId) {
+      // Update existing product
+      updatedProducts = products.map(product =>
+        product.id === editingId ? { ...formData, id: editingId } : product
+      );
+    } else {
+      // Add new product
+      const newProduct: Product = {
+        ...formData,
+        id: Date.now().toString(), // Simple ID generation
+      };
+      updatedProducts = [...products, newProduct];
     }
+    
+    saveProducts(updatedProducts);
+    resetForm();
   };
 
-  const handleDeleteProduct = async (id: string) => {
-    if (!confirm('Are you sure?')) return;
-    try {
-      const { error } = await supabase
-        .from('products')
-        .delete()
-        .eq('id', id);
-      if (error) throw error;
-      loadProducts();
-    } catch (error) {
-      console.error('Error deleting product:', error);
-    }
+  const handleDeleteProduct = (id: string) => {
+    if (!confirm('Are you sure you want to delete this product?')) return;
+    
+    const updatedProducts = products.filter(product => product.id !== id);
+    saveProducts(updatedProducts);
   };
 
   const handleEditProduct = (product: Product) => {
@@ -113,33 +107,175 @@ export default function ProductManagement({ shopOwnerId }: ProductManagementProp
     setShowForm(false);
   };
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadStatus('Processing file...');
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result as string;
+        const lines = text.split('\n').filter(line => line.trim());
+        
+        if (lines.length < 2) {
+          setUploadStatus('Error: File must have at least a header and one data row');
+          return;
+        }
+
+        // Parse CSV data
+        const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+        const newProducts: Product[] = [];
+
+        for (let i = 1; i < lines.length; i++) {
+          const values = lines[i].split(',').map(v => v.trim());
+          
+          if (values.length < 3) continue; // Skip incomplete rows
+          
+          // Try to map common column names
+          const nameIndex = headers.findIndex(h => 
+            h.includes('name') || h.includes('product') || h.includes('item')
+          );
+          const quantityIndex = headers.findIndex(h => 
+            h.includes('quantity') || h.includes('stock') || h.includes('qty')
+          );
+          const priceIndex = headers.findIndex(h => 
+            h.includes('price') || h.includes('cost') || h.includes('amount')
+          );
+
+          // If headers don't match, assume order: name, quantity, price
+          const productName = values[nameIndex !== -1 ? nameIndex : 0];
+          const quantity = parseFloat(values[quantityIndex !== -1 ? quantityIndex : 1]) || 0;
+          const price = parseFloat(values[priceIndex !== -1 ? priceIndex : 2]) || 0;
+
+          if (productName && quantity >= 0 && price >= 0) {
+            newProducts.push({
+              id: Date.now().toString() + i,
+              product_name: productName,
+              quantity_on_hand: quantity,
+              quantity_unit: 'pieces',
+              selling_price: price,
+              current_cost_price: price * 0.8, // Assume 20% margin
+              reorder_level: 10,
+            });
+          }
+        }
+
+        if (newProducts.length > 0) {
+          const updatedProducts = [...products, ...newProducts];
+          saveProducts(updatedProducts);
+          setUploadStatus(`Success! Added ${newProducts.length} products.`);
+        } else {
+          setUploadStatus('Error: No valid products found in file');
+        }
+
+        // Clear status after 3 seconds
+        setTimeout(() => setUploadStatus(''), 3000);
+        
+      } catch (error) {
+        setUploadStatus('Error: Failed to parse file. Please check format.');
+        setTimeout(() => setUploadStatus(''), 3000);
+      }
+    };
+
+    reader.readAsText(file);
+    
+    // Clear file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const downloadSampleCSV = () => {
+    const sampleData = 'Product Name,Quantity,Price\nRice,50,25.50\nWheat,30,22.00\nSugar,25,45.00';
+    const blob = new Blob([sampleData], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'sample_products.csv';
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
   const lowStockProducts = products.filter(
     (p) => p.quantity_on_hand <= p.reorder_level
   );
 
-  if (loading) {
-    return (
-      <div className="flex justify-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-2xl font-bold text-gray-900">Products & Inventory</h1>
-        <button
-          onClick={() => {
-            resetForm();
-            setShowForm(true);
-          }}
-          className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add Product</span>
-        </button>
+        
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => {
+              resetForm();
+              setShowForm(true);
+            }}
+            className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Product</span>
+          </button>
+          
+          <div className="relative">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv,.xlsx,.xls"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
+              title="Upload CSV/Excel file"
+            >
+              <Upload className="w-4 h-4" />
+              <span>Bulk Upload</span>
+            </button>
+          </div>
+          
+          <button
+            onClick={downloadSampleCSV}
+            className="flex items-center space-x-2 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition"
+            title="Download sample CSV format"
+          >
+            <FileText className="w-4 h-4" />
+            <span>Sample CSV</span>
+          </button>
+        </div>
       </div>
+
+      {uploadStatus && (
+        <div className={`border rounded-lg p-4 flex gap-3 ${
+          uploadStatus.includes('Success') 
+            ? 'bg-green-50 border-green-200' 
+            : uploadStatus.includes('Error')
+            ? 'bg-red-50 border-red-200'
+            : 'bg-blue-50 border-blue-200'
+        }`}>
+          <Upload className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
+            uploadStatus.includes('Success') 
+              ? 'text-green-600' 
+              : uploadStatus.includes('Error')
+              ? 'text-red-600'
+              : 'text-blue-600'
+          }`} />
+          <div>
+            <p className={`text-sm ${
+              uploadStatus.includes('Success') 
+                ? 'text-green-800' 
+                : uploadStatus.includes('Error')
+                ? 'text-red-800'
+                : 'text-blue-800'
+            }`}>
+              {uploadStatus}
+            </p>
+          </div>
+        </div>
+      )}
 
       {lowStockProducts.length > 0 && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex gap-3">
@@ -154,7 +290,7 @@ export default function ProductManagement({ shopOwnerId }: ProductManagementProp
       )}
 
       {showForm && (
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-xl p-6 border border-white/50">
           <h2 className="text-lg font-semibold mb-4">
             {editingId ? 'Edit Product' : 'Add New Product'}
           </h2>
@@ -291,8 +427,35 @@ export default function ProductManagement({ shopOwnerId }: ProductManagementProp
 
       <div className="grid gap-4">
         {products.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-lg">
-            <p className="text-gray-500">No products yet. Add your first product to get started.</p>
+          <div className="text-center py-16 bg-white/90 backdrop-blur-sm rounded-xl border border-white/50">
+            <div className="flex justify-center mb-6">
+              <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full flex items-center justify-center">
+                <Package className="w-10 h-10 text-blue-600" />
+              </div>
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">No Products Yet</h3>
+            <p className="text-gray-500 mb-6 max-w-md mx-auto">
+              Start building your {shopData.business_type.toLowerCase()} inventory by adding your first product.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <button
+                onClick={() => {
+                  resetForm();
+                  setShowForm(true);
+                }}
+                className="flex items-center justify-center space-x-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-medium"
+              >
+                <Plus className="w-5 h-5" />
+                <span>Add Your First Product</span>
+              </button>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center justify-center space-x-2 bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition font-medium"
+              >
+                <Upload className="w-5 h-5" />
+                <span>Import from File</span>
+              </button>
+            </div>
           </div>
         ) : (
           products.map((product) => {
@@ -305,7 +468,7 @@ export default function ProductManagement({ shopOwnerId }: ProductManagementProp
             return (
               <div
                 key={product.id}
-                className="bg-white rounded-lg shadow p-4 hover:shadow-lg transition"
+                className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-6 hover:shadow-xl transition-all duration-300 border border-white/50 hover:border-blue-200 transform hover:-translate-y-1"
               >
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-start mb-4">
                   <div>
