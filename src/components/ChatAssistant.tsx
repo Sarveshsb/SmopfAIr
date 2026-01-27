@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Mic, MicOff, User, Bot, HelpCircle, Package, BarChart3, Users, TrendingUp } from 'lucide-react';
+import { MessageCircle, X, Send, Mic, MicOff, User, Bot } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -74,120 +74,69 @@ What would you like to know?`,
     let response = '';
     let suggestions: string[] = [];
 
-    // Product-related queries
-    if (lowerMessage.includes('product') || lowerMessage.includes('inventory') || lowerMessage.includes('stock')) {
-      response = `📦 **Product Management Help:**
+    // Helper to get fresh data
+    const getTransactions = () => {
+      const saved = localStorage.getItem(`transactions_${shopData.shop_name}`);
+      return saved ? JSON.parse(saved) : [];
+    };
 
-To add products:
-1. Go to the **Products** section
-2. Click **"Add Product"** for single items
-3. Use **"Bulk Upload"** for CSV/Excel files
-4. Download the **"Sample CSV"** to see the correct format
+    // 1. Sales & Revenue Context
+    if (lowerMessage.includes('sell') || lowerMessage.includes('sales') || lowerMessage.includes('revenue') || lowerMessage.includes('profit') || lowerMessage.includes('money')) {
+      const transactions: any[] = getTransactions();
+      const today = new Date().toDateString();
+      const todaySales = transactions.filter((t: any) => new Date(t.date).toDateString() === today);
+      const totalRevenue = todaySales.reduce((sum: number, t: any) => sum + t.revenue, 0);
+      const totalItems = todaySales.reduce((sum: number, t: any) => sum + t.quantity, 0);
 
-Your shop currently has **${products.length} products**. You can track quantities, prices, and get low-stock alerts automatically!`;
-      suggestions = ["How to bulk upload?", "What's low stock alert?", "How to edit products?"];
+      if (lowerMessage.includes('today')) {
+        response = `� **Sales Update (Today):**\n\nYou have sold **${totalItems} items** today, generating **₹${totalRevenue.toFixed(2)}** in revenue.\n\nKeep it up! 🚀`;
+      } else {
+        const allRevenue = transactions.reduce((sum: number, t: any) => sum + t.revenue, 0);
+        response = `📊 **Business Performance:**\n\n• **Total Revenue (All Time):** ₹${allRevenue.toFixed(2)}\n• **Today's Revenue:** ₹${totalRevenue.toFixed(2)}\n\nCheck the **Analytics** tab for detailed charts!`;
+      }
+      suggestions = ["Show me today's sales", "What is my total revenue?", "Best selling product?"];
     }
-    
-    // Bulk upload queries
-    else if (lowerMessage.includes('bulk') || lowerMessage.includes('csv') || lowerMessage.includes('excel') || lowerMessage.includes('upload')) {
-      response = `📂 **Bulk Upload Guide:**
 
-1. **Download Sample CSV** - Click the "Sample CSV" button to get the correct format
-2. **Prepare Your File** - Include columns: Product Name, Quantity, Price
-3. **Upload File** - Click "Bulk Upload" and select your CSV/Excel file
-4. **Review Results** - The system will show how many products were added
+    // 2. Product & Stock Context
+    else if (lowerMessage.includes('product') || lowerMessage.includes('stock') || lowerMessage.includes('inventory') || lowerMessage.includes('bestseller') || lowerMessage.includes('best seller')) {
+      if (lowerMessage.includes('low') || lowerMessage.includes('alert')) {
+        const lowStock = products.filter(p => p.quantity_on_hand <= p.reorder_level);
+        response = `⚠️ **Low Stock Alert:**\n\nYou have **${lowStock.length} products** running low on stock.\n${lowStock.length > 0 ? `Example: ${lowStock[0].product_name} (${lowStock[0].quantity_on_hand} left).` : 'Everything looks good!'} \n\nCheck **Insights** for the full list.`;
+        suggestions = ["Reorder products", "View inventory"];
+      } else if (lowerMessage.includes('best') || lowerMessage.includes('top')) {
+        const transactions: any[] = getTransactions();
+        const salesMap = new Map<string, number>();
+        transactions.forEach((t: any) => salesMap.set(t.productName, (salesMap.get(t.productName) || 0) + t.quantity));
+        const sorted = Array.from(salesMap.entries()).sort((a, b) => b[1] - a[1]);
 
-**Tip:** Make sure your file has headers (Product Name, Quantity, Price) in the first row!`;
-      suggestions = ["Sample CSV format", "Upload failed - help", "Edit bulk products"];
+        if (sorted.length > 0) {
+          response = `🏆 **Best Seller:**\n\nYour top product is **${sorted[0][0]}** with **${sorted[0][1]} units** sold!\n\nUse this insight to plan your next restocking.`;
+        } else {
+          response = "I need more sales data to determine your best seller. Start recording transactions!";
+        }
+        suggestions = ["Show revenue", "Low stock items"];
+      } else {
+        response = `📦 **Inventory Status:**\n\nYou currently have **${products.length} unique products** in your inventory.\n\nNeed to add more? Go to the **Products** tab.`;
+        suggestions = ["How to bulk upload?", "What is dead stock?", "Add new product"];
+      }
     }
-    
-    // Notification queries
-    else if (lowerMessage.includes('notification') || lowerMessage.includes('alert') || lowerMessage.includes('bell')) {
-      response = `🔔 **Smart Notifications System:**
 
-SmopfAIr sends you alerts for:
-• **Low Stock** - When products need reordering
-• **Sales Insights** - AI-powered business tips
-• **Profit Analysis** - Margin optimization suggestions
-• **Daily Tips** - Best practices for your business
-
-Click the bell icon 🔔 in the top bar to see all notifications. Red badge shows unread count!`;
-      suggestions = ["How to turn off alerts?", "What's low stock level?", "Daily tips explained"];
+    // 3. Help & Features
+    else if (lowerMessage.includes('notification') || lowerMessage.includes('alert')) {
+      response = `� **Notifications:**\n\nI'll notify you about:\n• Low stock alerts\n• Daily sales summaries\n• Profit opportunities\n\nCheck the bell icon in the top right!`;
+      suggestions = ["Check stock", "Show analytics"];
     }
-    
-    // Features queries
-    else if (lowerMessage.includes('feature') || lowerMessage.includes('what can') || lowerMessage.includes('help')) {
-      response = `✨ **SmopfAIr Features:**
 
-**📦 Products & Inventory**
-- Add/edit products manually or via CSV
-- Track stock levels and get alerts
-- Monitor profit margins
-
-**🤝 Supplier Management** 
-- Track supplier details and ratings
-- Manage contact information
-
-**📊 Analytics & Reports**
-- Sales tracking and trends (coming soon)
-- Business insights and recommendations
-
-**🔔 Smart Notifications**
-- AI-powered alerts and tips
-- Actionable business insights`;
-      suggestions = ["How to add suppliers?", "Sales tracking guide", "Export my data"];
+    // 4. Greeting / General
+    else if (lowerMessage.includes('hello') || lowerMessage.includes('hi') || lowerMessage.includes('hey')) {
+      response = `Hello! 👋 I'm your **SmopfAIr Assistant**.\n\nAsk me about your **sales, inventory, or suppliers**. I can analyze your data in real-time!`;
+      suggestions = ["How much did I sell today?", "What is low stock?", "Who is my best supplier?"];
     }
-    
-    // Sales queries
-    else if (lowerMessage.includes('sales') || lowerMessage.includes('revenue') || lowerMessage.includes('tracking')) {
-      response = `💰 **Sales Tracking (Coming Soon!):**
 
-The sales module will help you:
-• Record daily transactions
-• Track revenue and profit trends  
-• Identify best-selling products
-• Generate sales reports
-
-**Current Status:** You can add products and manage inventory. Sales tracking features are being developed!
-
-**Tip:** Focus on adding your products first - this helps with future sales analysis.`;
-      suggestions = ["Add products first", "When will sales be ready?", "Export product data"];
-    }
-    
-    // Supplier queries
-    else if (lowerMessage.includes('supplier') || lowerMessage.includes('vendor')) {
-      response = `🤝 **Supplier Management:**
-
-To manage suppliers:
-1. Go to **"Suppliers"** section
-2. Click **"Add Supplier"**  
-3. Enter supplier details:
-   - Name and contact info
-   - Reliability score (1-10)
-   - Quality rating (1-10)
-   - Average delivery time
-
-**Why track suppliers?**
-- Compare performance and reliability
-- Make better purchasing decisions
-- Maintain good business relationships`;
-      suggestions = ["How to rate suppliers?", "Edit supplier info", "Best supplier practices"];
-    }
-    
-    // General help
+    // Default Fallback
     else {
-      response = `🤔 I understand you're asking about: "${userMessage}"
-
-I'm here to help with SmopfAIr features! Here are the main areas I can assist with:
-
-**📦 Product Management** - Adding, editing, bulk upload
-**🔔 Notifications** - Understanding alerts and insights  
-**🤝 Suppliers** - Managing vendor relationships
-**📊 Analytics** - Business insights and reports
-**🆘 General Help** - Using SmopfAIr effectively
-
-Try asking something like "How do I add products?" or click a suggestion below!`;
-      suggestions = ["Show all features", "How to get started?", "Contact support"];
+      response = `🤔 **I can help with that!**\n\nTry asking me about:\n\n• **"Sales today"**\n• **"Low stock items"**\n• **"Best selling product"**\n• **"Total revenue"**\n\nI'm connected to your shop's live data!`;
+      suggestions = ["Sales today", "Inventory status", "Supplier help"];
     }
 
     return {
@@ -237,7 +186,7 @@ Try asking something like "How do I add products?" or click a suggestion below!`
         >
           <MessageCircle className="w-6 h-6" />
           <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-          
+
           {/* Tooltip */}
           <div className="absolute bottom-full right-0 mb-2 hidden group-hover:block">
             <div className="bg-gray-900 text-white text-sm px-3 py-2 rounded-lg whitespace-nowrap">
@@ -277,28 +226,26 @@ Try asking something like "How do I add products?" or click a suggestion below!`
                 key={message.id}
                 className={`flex gap-3 ${message.type === 'user' ? 'flex-row-reverse' : ''}`}
               >
-                <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                  message.type === 'user' 
-                    ? 'bg-blue-500 text-white' 
-                    : 'bg-gray-200 text-gray-600'
-                }`}>
-                  {message.type === 'user' ? 
-                    <User className="w-4 h-4" /> : 
+                <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${message.type === 'user'
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-200 text-gray-600'
+                  }`}>
+                  {message.type === 'user' ?
+                    <User className="w-4 h-4" /> :
                     <Bot className="w-4 h-4" />
                   }
                 </div>
-                
+
                 <div className={`flex-1 max-w-xs ${message.type === 'user' ? 'text-right' : ''}`}>
-                  <div className={`inline-block p-3 rounded-lg ${
-                    message.type === 'user'
-                      ? 'bg-blue-500 text-white rounded-br-sm'
-                      : 'bg-white border border-gray-200 rounded-bl-sm shadow-sm'
-                  }`}>
+                  <div className={`inline-block p-3 rounded-lg ${message.type === 'user'
+                    ? 'bg-blue-500 text-white rounded-br-sm'
+                    : 'bg-white border border-gray-200 rounded-bl-sm shadow-sm'
+                    }`}>
                     <div className="text-sm whitespace-pre-line">
                       {message.content}
                     </div>
                   </div>
-                  
+
                   {/* Suggestions */}
                   {message.suggestions && (
                     <div className="mt-2 space-y-1">
@@ -313,11 +260,11 @@ Try asking something like "How do I add products?" or click a suggestion below!`
                       ))}
                     </div>
                   )}
-                  
+
                   <div className="text-xs text-gray-400 mt-1">
-                    {message.timestamp.toLocaleTimeString([], { 
-                      hour: '2-digit', 
-                      minute: '2-digit' 
+                    {message.timestamp.toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit'
                     })}
                   </div>
                 </div>
@@ -358,19 +305,18 @@ Try asking something like "How do I add products?" or click a suggestion below!`
                   className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
                 />
               </div>
-              
+
               <button
                 onClick={handleVoiceToggle}
-                className={`p-2 rounded-full transition ${
-                  isListening 
-                    ? 'bg-red-100 text-red-600 animate-pulse' 
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
+                className={`p-2 rounded-full transition ${isListening
+                  ? 'bg-red-100 text-red-600 animate-pulse'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
                 title="Voice input (coming soon)"
               >
                 {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
               </button>
-              
+
               <button
                 onClick={() => sendMessage()}
                 disabled={!inputValue.trim()}
@@ -379,7 +325,7 @@ Try asking something like "How do I add products?" or click a suggestion below!`
                 <Send className="w-4 h-4" />
               </button>
             </div>
-            
+
             <div className="flex items-center justify-center mt-2">
               <p className="text-xs text-gray-400">
                 AI Assistant • Voice support coming soon
@@ -391,7 +337,7 @@ Try asking something like "How do I add products?" or click a suggestion below!`
 
       {/* Backdrop */}
       {isOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/10 z-40"
           onClick={() => setIsOpen(false)}
         />

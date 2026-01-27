@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Edit2, Trash2, AlertCircle, Upload, FileText } from 'lucide-react';
+import { Plus, Edit2, Trash2, AlertCircle, Upload, Package, Search, X, CheckCircle2, Download } from 'lucide-react';
 
 interface Product {
   id: string;
@@ -24,11 +24,14 @@ export default function ProductManagement({ shopData, onProductsChange }: Produc
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [uploadStatus, setUploadStatus] = useState<string>('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [stockFilter, setStockFilter] = useState<'all' | 'low' | 'good'>('all');
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     product_name: '',
     quantity_on_hand: 0,
-    quantity_unit: 'kg',
+    quantity_unit: 'pieces',
     selling_price: 0,
     current_cost_price: 0,
     reorder_level: 10,
@@ -53,30 +56,24 @@ export default function ProductManagement({ shopData, onProductsChange }: Produc
 
   const handleAddProduct = (e: React.FormEvent) => {
     e.preventDefault();
-    
     let updatedProducts = [...products];
-    
     if (editingId) {
-      // Update existing product
       updatedProducts = products.map(product =>
         product.id === editingId ? { ...formData, id: editingId } : product
       );
     } else {
-      // Add new product
       const newProduct: Product = {
         ...formData,
-        id: Date.now().toString(), // Simple ID generation
+        id: Date.now().toString(),
       };
       updatedProducts = [...products, newProduct];
     }
-    
     saveProducts(updatedProducts);
     resetForm();
   };
 
   const handleDeleteProduct = (id: string) => {
     if (!confirm('Are you sure you want to delete this product?')) return;
-    
     const updatedProducts = products.filter(product => product.id !== id);
     saveProducts(updatedProducts);
   };
@@ -98,7 +95,7 @@ export default function ProductManagement({ shopData, onProductsChange }: Produc
     setFormData({
       product_name: '',
       quantity_on_hand: 0,
-      quantity_unit: 'kg',
+      quantity_unit: 'pieces',
       selling_price: 0,
       current_cost_price: 0,
       reorder_level: 10,
@@ -107,418 +104,267 @@ export default function ProductManagement({ shopData, onProductsChange }: Produc
     setShowForm(false);
   };
 
+  // --- Bulk Upload Logic ---
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setUploadStatus('Processing file...');
-    
+    setUploadStatus('Processing...');
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
         const text = event.target?.result as string;
         const lines = text.split('\n').filter(line => line.trim());
-        
-        if (lines.length < 2) {
-          setUploadStatus('Error: File must have at least a header and one data row');
-          return;
-        }
+        if (lines.length < 2) throw new Error('Invalid format');
 
-        // Parse CSV data
-        const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+        // Simple CSV parsing (Name, Quantity, Price)
         const newProducts: Product[] = [];
-
         for (let i = 1; i < lines.length; i++) {
           const values = lines[i].split(',').map(v => v.trim());
-          
-          if (values.length < 3) continue; // Skip incomplete rows
-          
-          // Try to map common column names
-          const nameIndex = headers.findIndex(h => 
-            h.includes('name') || h.includes('product') || h.includes('item')
-          );
-          const quantityIndex = headers.findIndex(h => 
-            h.includes('quantity') || h.includes('stock') || h.includes('qty')
-          );
-          const priceIndex = headers.findIndex(h => 
-            h.includes('price') || h.includes('cost') || h.includes('amount')
-          );
-
-          // If headers don't match, assume order: name, quantity, price
-          const productName = values[nameIndex !== -1 ? nameIndex : 0];
-          const quantity = parseFloat(values[quantityIndex !== -1 ? quantityIndex : 1]) || 0;
-          const price = parseFloat(values[priceIndex !== -1 ? priceIndex : 2]) || 0;
-
-          if (productName && quantity >= 0 && price >= 0) {
+          if (values.length >= 2) {
             newProducts.push({
               id: Date.now().toString() + i,
-              product_name: productName,
-              quantity_on_hand: quantity,
+              product_name: values[0],
+              quantity_on_hand: parseFloat(values[1]) || 0,
               quantity_unit: 'pieces',
-              selling_price: price,
-              current_cost_price: price * 0.8, // Assume 20% margin
-              reorder_level: 10,
+              selling_price: parseFloat(values[2]) || 0,
+              current_cost_price: (parseFloat(values[2]) || 0) * 0.7, // Estimate cost
+              reorder_level: 10
             });
           }
         }
 
         if (newProducts.length > 0) {
-          const updatedProducts = [...products, ...newProducts];
-          saveProducts(updatedProducts);
-          setUploadStatus(`Success! Added ${newProducts.length} products.`);
+          saveProducts([...products, ...newProducts]);
+          setUploadStatus(`Success! Added ${newProducts.length} items.`);
         } else {
-          setUploadStatus('Error: No valid products found in file');
+          setUploadStatus('No valid items found.');
         }
-
-        // Clear status after 3 seconds
         setTimeout(() => setUploadStatus(''), 3000);
-        
-      } catch (error) {
-        setUploadStatus('Error: Failed to parse file. Please check format.');
+      } catch (err) {
+        setUploadStatus('Error parsing file.');
         setTimeout(() => setUploadStatus(''), 3000);
       }
     };
-
     reader.readAsText(file);
-    
-    // Clear file input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const downloadSampleCSV = () => {
-    const sampleData = 'Product Name,Quantity,Price\nRice,50,25.50\nWheat,30,22.00\nSugar,25,45.00';
-    const blob = new Blob([sampleData], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'sample_products.csv';
-    a.click();
-    window.URL.revokeObjectURL(url);
+    const csvContent = "data:text/csv;charset=utf-8,Product Name,Quantity,Selling Price\nApple,50,25\nBanana,100,5";
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "inventory_sample.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
-  const lowStockProducts = products.filter(
-    (p) => p.quantity_on_hand <= p.reorder_level
-  );
+  // --- Filtering ---
+  const filteredProducts = products.filter(p => {
+    const matchesSearch = p.product_name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStock = stockFilter === 'all'
+      ? true
+      : stockFilter === 'low'
+        ? p.quantity_on_hand <= p.reorder_level
+        : p.quantity_on_hand > p.reorder_level;
+    return matchesSearch && matchesStock;
+  });
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h1 className="text-2xl font-bold text-gray-900">Products & Inventory</h1>
-        
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => {
-              resetForm();
-              setShowForm(true);
-            }}
-            className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add Product</span>
-          </button>
-          
-          <div className="relative">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".csv,.xlsx,.xls"
-              onChange={handleFileUpload}
-              className="hidden"
-            />
+    <div className="space-y-8 animate-in fade-in duration-500">
+
+      {/* 1. Header Toolbar */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Inventory</h1>
+          <p className="text-gray-500">Manage your {shopData.shop_name} products</p>
+        </div>
+
+        <div className="flex gap-3 w-full lg:w-auto">
+          {products.length > 0 && (
             <button
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
-              title="Upload CSV/Excel file"
+              onClick={() => { resetForm(); setShowForm(true); }}
+              className="flex-1 lg:flex-none flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-medium transition-all shadow-lg shadow-blue-200 active:scale-95"
             >
-              <Upload className="w-4 h-4" />
-              <span>Bulk Upload</span>
+              <Plus className="w-5 h-5" /> Add Product
             </button>
+          )}
+        </div>
+      </div>
+
+      {/* 2. Bulk Actions & Search Bar */}
+      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4 justify-between items-center">
+        {/* Search & Filter */}
+        <div className="flex gap-3 w-full md:w-auto flex-1">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search products..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all outline-none"
+            />
           </div>
-          
+          <select
+            value={stockFilter}
+            onChange={(e) => setStockFilter(e.target.value as any)}
+            className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer"
+          >
+            <option value="all">All Stock</option>
+            <option value="low">Low Stock</option>
+            <option value="good">Good Stock</option>
+          </select>
+        </div>
+
+        {/* Bulk Tools */}
+        <div className="flex gap-2 w-full md:w-auto border-t md:border-t-0 pt-4 md:pt-0">
+          <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".csv" className="hidden" />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"
+          >
+            <Upload className="w-4 h-4" /> Import CSV
+          </button>
           <button
             onClick={downloadSampleCSV}
-            className="flex items-center space-x-2 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition"
-            title="Download sample CSV format"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"
           >
-            <FileText className="w-4 h-4" />
-            <span>Sample CSV</span>
+            <Download className="w-4 h-4" /> Template
           </button>
         </div>
       </div>
 
       {uploadStatus && (
-        <div className={`border rounded-lg p-4 flex gap-3 ${
-          uploadStatus.includes('Success') 
-            ? 'bg-green-50 border-green-200' 
-            : uploadStatus.includes('Error')
-            ? 'bg-red-50 border-red-200'
-            : 'bg-blue-50 border-blue-200'
-        }`}>
-          <Upload className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
-            uploadStatus.includes('Success') 
-              ? 'text-green-600' 
-              : uploadStatus.includes('Error')
-              ? 'text-red-600'
-              : 'text-blue-600'
-          }`} />
-          <div>
-            <p className={`text-sm ${
-              uploadStatus.includes('Success') 
-                ? 'text-green-800' 
-                : uploadStatus.includes('Error')
-                ? 'text-red-800'
-                : 'text-blue-800'
-            }`}>
-              {uploadStatus}
-            </p>
-          </div>
+        <div className={`p-3 rounded-xl flex items-center gap-2 text-sm font-medium ${uploadStatus.includes('Error') ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
+          {uploadStatus.includes('Error') ? <AlertCircle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
+          {uploadStatus}
         </div>
       )}
 
-      {lowStockProducts.length > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex gap-3">
-          <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-          <div>
-            <h3 className="font-semibold text-amber-900">Low Stock Alert</h3>
-            <p className="text-sm text-amber-800">
-              {lowStockProducts.length} product(s) below reorder level: {lowStockProducts.map((p) => p.product_name).join(', ')}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {showForm && (
-        <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-xl p-6 border border-white/50">
-          <h2 className="text-lg font-semibold mb-4">
-            {editingId ? 'Edit Product' : 'Add New Product'}
-          </h2>
-          <form onSubmit={handleAddProduct} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Product Name
-                </label>
-                <input
-                  type="text"
-                  value={formData.product_name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, product_name: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Quantity Unit
-                </label>
-                <select
-                  value={formData.quantity_unit}
-                  onChange={(e) =>
-                    setFormData({ ...formData, quantity_unit: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                >
-                  <option value="kg">Kilogram (kg)</option>
-                  <option value="g">Gram (g)</option>
-                  <option value="l">Liter (L)</option>
-                  <option value="ml">Milliliter (ml)</option>
-                  <option value="pieces">Pieces</option>
-                  <option value="dozen">Dozen</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Current Quantity
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={formData.quantity_on_hand}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      quantity_on_hand: parseFloat(e.target.value),
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Reorder Level
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={formData.reorder_level}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      reorder_level: parseFloat(e.target.value),
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Selling Price (₹)
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={formData.selling_price}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      selling_price: parseFloat(e.target.value),
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Cost Price (₹)
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={formData.current_cost_price}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      current_cost_price: parseFloat(e.target.value),
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-              </div>
+      {/* 3. Products Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        {filteredProducts.length === 0 ? (
+          <div className="col-span-full py-20 text-center">
+            <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Package className="w-10 h-10 text-gray-300" />
             </div>
-
-            <div className="flex gap-3">
-              <button
-                type="submit"
-                className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
-              >
-                {editingId ? 'Update Product' : 'Add Product'}
-              </button>
-              <button
-                type="button"
-                onClick={resetForm}
-                className="flex-1 bg-gray-200 text-gray-800 py-2 rounded-lg hover:bg-gray-300 transition"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      <div className="grid gap-4">
-        {products.length === 0 ? (
-          <div className="text-center py-16 bg-white/90 backdrop-blur-sm rounded-xl border border-white/50">
-            <div className="flex justify-center mb-6">
-              <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full flex items-center justify-center">
-                <Package className="w-10 h-10 text-blue-600" />
-              </div>
-            </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">No Products Yet</h3>
-            <p className="text-gray-500 mb-6 max-w-md mx-auto">
-              Start building your {shopData.business_type.toLowerCase()} inventory by adding your first product.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <button
-                onClick={() => {
-                  resetForm();
-                  setShowForm(true);
-                }}
-                className="flex items-center justify-center space-x-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-medium"
-              >
-                <Plus className="w-5 h-5" />
-                <span>Add Your First Product</span>
-              </button>
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="flex items-center justify-center space-x-2 bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition font-medium"
-              >
-                <Upload className="w-5 h-5" />
-                <span>Import from File</span>
-              </button>
-            </div>
+            <h3 className="text-lg font-semibold text-gray-900">No products found</h3>
+            <p className="text-gray-500 mb-6">Try adjusting your search or add a new product.</p>
+            <button
+              onClick={() => { resetForm(); setShowForm(true); }}
+              className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-medium transition-all shadow-lg shadow-blue-200 active:scale-95 mx-auto"
+            >
+              <Plus className="w-5 h-5" /> Add First Product
+            </button>
           </div>
         ) : (
-          products.map((product) => {
-            const profit = product.selling_price - product.current_cost_price;
-            const profitMargin =
-              product.current_cost_price > 0
-                ? ((profit / product.current_cost_price) * 100).toFixed(1)
-                : 0;
+          filteredProducts.map(product => {
+            const isLowStock = product.quantity_on_hand <= product.reorder_level;
+            const stockPercent = Math.min(100, (product.quantity_on_hand / (product.reorder_level * 3)) * 100);
 
             return (
-              <div
-                key={product.id}
-                className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-6 hover:shadow-xl transition-all duration-300 border border-white/50 hover:border-blue-200 transform hover:-translate-y-1"
-              >
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-start mb-4">
+              <div key={product.id} className="group bg-white rounded-2xl border border-gray-100 p-5 hover:shadow-xl hover:border-blue-200 transition-all duration-300 relative overflow-hidden">
+                <div className="flex justify-between items-start mb-4">
                   <div>
-                    <p className="text-sm text-gray-500">Product</p>
-                    <p className="font-semibold text-gray-900">{product.product_name}</p>
+                    <h3 className="font-bold text-gray-900 text-lg group-hover:text-blue-600 transition-colors">{product.product_name}</h3>
+                    <p className="text-sm text-gray-500">{product.quantity_unit}</p>
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Stock</p>
-                    <p className="font-semibold text-gray-900">
-                      {product.quantity_on_hand} {product.quantity_unit}
-                    </p>
-                    {product.quantity_on_hand <= product.reorder_level && (
-                      <p className="text-xs text-red-600 mt-1">Low stock!</p>
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Selling Price</p>
-                    <p className="font-semibold text-gray-900">₹{product.selling_price}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Cost Price</p>
-                    <p className="font-semibold text-gray-900">₹{product.current_cost_price}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Margin</p>
-                    <p className="font-semibold text-green-600">{profitMargin}%</p>
+                  <div className={`px-2 py-1 rounded-lg text-xs font-bold ${isLowStock ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
+                    {isLowStock ? 'Low Stock' : 'In Stock'}
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-2">
-                  <button
-                    onClick={() => handleEditProduct(product)}
-                    className="flex items-center space-x-1 px-3 py-1 text-blue-600 hover:bg-blue-50 rounded transition"
-                  >
-                    <Edit2 className="w-4 h-4" />
-                    <span className="text-sm">Edit</span>
-                  </button>
-                  <button
-                    onClick={() => handleDeleteProduct(product.id)}
-                    className="flex items-center space-x-1 px-3 py-1 text-red-600 hover:bg-red-50 rounded transition"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    <span className="text-sm">Delete</span>
-                  </button>
+                <div className="space-y-3">
+                  <div>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="text-gray-500">Available</span>
+                      <span className="font-medium text-gray-900">{product.quantity_on_hand}</span>
+                    </div>
+                    <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${isLowStock ? 'bg-red-500' : 'bg-blue-500'}`}
+                        style={{ width: `${stockPercent}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center pt-2 border-t border-gray-50">
+                    <div>
+                      <p className="text-xs text-gray-400">Price</p>
+                      <p className="font-bold text-gray-900">₹{product.selling_price}</p>
+                    </div>
+                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => handleEditProduct(product)} className="p-2 hover:bg-gray-100 rounded-lg text-blue-600"><Edit2 className="w-4 h-4" /></button>
+                      <button onClick={() => handleDeleteProduct(product.id)} className="p-2 hover:bg-gray-100 rounded-lg text-red-600"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                  </div>
                 </div>
               </div>
             );
           })
         )}
       </div>
+
+      {/* 4. Slide-over Form (Modal) */}
+      {showForm && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <div className="absolute inset-0 bg-gray-900/20 backdrop-blur-sm transition-opacity" onClick={() => setShowForm(false)} />
+          <div className="relative w-full max-w-md bg-white h-full shadow-2xl p-6 overflow-y-auto animate-in slide-in-from-right duration-300">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-gray-900">{editingId ? 'Edit Product' : 'New Product'}</h2>
+              <button onClick={() => setShowForm(false)} className="p-2 hover:bg-gray-100 rounded-full"><X className="w-5 h-5" /></button>
+            </div>
+
+            <form onSubmit={handleAddProduct} className="space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Product Name</label>
+                <input required type="text" value={formData.product_name} onChange={e => setFormData({ ...formData, product_name: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g. Wireless Mouse" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Stock</label>
+                  <input required type="number" value={formData.quantity_on_hand} onChange={e => setFormData({ ...formData, quantity_on_hand: parseFloat(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Unit</label>
+                  <select value={formData.quantity_unit} onChange={e => setFormData({ ...formData, quantity_unit: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+                    <option value="pieces">Pieces</option>
+                    <option value="kg">kg</option>
+                    <option value="g">g</option>
+                    <option value="ltr">Ltr</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Selling Price (₹)</label>
+                  <input required type="number" value={formData.selling_price} onChange={e => setFormData({ ...formData, selling_price: parseFloat(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Cost Price (₹)</label>
+                  <input type="number" value={formData.current_cost_price} onChange={e => setFormData({ ...formData, current_cost_price: parseFloat(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Reorder Level</label>
+                <input type="number" value={formData.reorder_level} onChange={e => setFormData({ ...formData, reorder_level: parseFloat(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" />
+                <p className="text-xs text-gray-400 mt-1">Stock below this level will be marked as 'Low Stock'</p>
+              </div>
+
+              <div className="pt-4 flex gap-3">
+                <button type="button" onClick={() => setShowForm(false)} className="flex-1 py-3 text-gray-600 font-medium hover:bg-gray-50 rounded-xl transition-colors">Cancel</button>
+                <button type="submit" className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all">{editingId ? 'Save Changes' : 'Add Product'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Bell, X, AlertTriangle, TrendingUp, Package, DollarSign, CheckCircle, Clock } from 'lucide-react';
+import { Bell, X, AlertTriangle, TrendingUp, Package, CheckCircle, Clock } from 'lucide-react';
 
 interface Notification {
   id: string;
@@ -155,7 +155,7 @@ export default function NotificationCenter({ shopData, products }: NotificationC
                       <div className="flex-shrink-0 mt-0.5">
                         {getIcon(notification.type)}
                       </div>
-                      
+
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between">
                           <h4 className="text-sm font-medium text-gray-900 mb-1">
@@ -168,20 +168,20 @@ export default function NotificationCenter({ shopData, products }: NotificationC
                             <X className="w-3 h-3 text-gray-400" />
                           </button>
                         </div>
-                        
+
                         <p className="text-sm text-gray-600 mb-2 leading-relaxed">
                           {notification.message}
                         </p>
-                        
+
                         <div className="flex items-center justify-between">
                           <div className="flex items-center text-xs text-gray-400">
                             <Clock className="w-3 h-3 mr-1" />
-                            {notification.timestamp.toLocaleTimeString([], { 
-                              hour: '2-digit', 
-                              minute: '2-digit' 
+                            {notification.timestamp.toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit'
                             })}
                           </div>
-                          
+
                           {notification.actionable && notification.action && (
                             <button className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full hover:bg-blue-200 transition">
                               {notification.action}
@@ -211,7 +211,7 @@ export default function NotificationCenter({ shopData, products }: NotificationC
 
       {/* Backdrop */}
       {isOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-40"
           onClick={() => setIsOpen(false)}
         />
