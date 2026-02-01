@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Pie, Line } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, ArcElement, Title, Tooltip, Legend, Filler } from 'chart.js';
 import { MetricCard } from './MetricCard';
-import { TrendingUp, DollarSign, Package, Calendar } from 'lucide-react';
+import { TrendingUp, DollarSign, Package, Calendar, Wallet, AlertCircle } from 'lucide-react';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, ArcElement, Title, Tooltip, Legend, Filler);
 
@@ -16,10 +16,12 @@ interface AnalyticsProps {
 
 export default function Analytics({ shopData, products }: AnalyticsProps) {
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [expenses, setExpenses] = useState<any[]>([]);
   const [dateRange, setDateRange] = useState<'week' | 'month' | 'year'>('week');
 
   useEffect(() => {
     loadTransactions();
+    loadExpenses();
   }, [shopData.shop_name, dateRange]);
 
   const loadTransactions = () => {
@@ -62,16 +64,60 @@ export default function Analytics({ shopData, products }: AnalyticsProps) {
     }
   };
 
+  const loadExpenses = () => {
+    try {
+      const savedExpenses = localStorage.getItem(`expenses_${shopData.shop_name}`);
+      if (savedExpenses) {
+        let filteredExpenses = JSON.parse(savedExpenses);
+
+        if (!Array.isArray(filteredExpenses)) {
+          console.error("Invalid expense data found");
+          setExpenses([]);
+          return;
+        }
+
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+
+        const oneWeekAgo = new Date(now);
+        oneWeekAgo.setDate(now.getDate() - 7);
+
+        const oneMonthAgo = new Date(now);
+        oneMonthAgo.setMonth(now.getMonth() - 1);
+
+        const oneYearAgo = new Date(now);
+        oneYearAgo.setFullYear(now.getFullYear() - 1);
+
+        if (dateRange === 'week') {
+          filteredExpenses = filteredExpenses.filter((e: any) => new Date(e.date) >= oneWeekAgo);
+        } else if (dateRange === 'month') {
+          filteredExpenses = filteredExpenses.filter((e: any) => new Date(e.date) >= oneMonthAgo);
+        } else if (dateRange === 'year') {
+          filteredExpenses = filteredExpenses.filter((e: any) => new Date(e.date) >= oneYearAgo);
+        }
+        setExpenses(filteredExpenses);
+      } else {
+        setExpenses([]);
+      }
+    } catch (error) {
+      console.error("Error loading expenses:", error);
+      setExpenses([]);
+    }
+  };
+
   const calculateMetrics = () => {
     // Safety check
     const safeTransactions = Array.isArray(transactions) ? transactions : [];
     const safeProducts = Array.isArray(products) ? products : [];
+    const safeExpenses = Array.isArray(expenses) ? expenses : [];
 
     const totalSales = safeTransactions.reduce((sum, t) => sum + (t.revenue || 0), 0);
-    const totalProfit = safeTransactions.reduce((sum, t) => {
+    const totalCosts = safeTransactions.reduce((sum, t) => {
       const product = safeProducts.find(p => p.id === t.productId);
-      return product ? sum + ((t.revenue || 0) - ((t.quantity || 0) * (product.current_cost_price || 0))) : sum;
+      return product ? sum + ((t.quantity || 0) * (product.current_cost_price || 0)) : sum;
     }, 0);
+    const totalExpenses = safeExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+    const totalProfit = totalSales - totalCosts - totalExpenses;
 
     const dailySalesMap = new Map<string, number>();
     safeTransactions.forEach(t => {
@@ -102,6 +148,13 @@ export default function Analytics({ shopData, products }: AnalyticsProps) {
       quantity: productQuantityMap.get(name) || 0
     }));
 
+    // Expense category breakdown
+    const expenseCategoryMap = new Map<string, number>();
+    safeExpenses.forEach(e => {
+      const category = e.category || 'Unknown';
+      expenseCategoryMap.set(category, (expenseCategoryMap.get(category) || 0) + (e.amount || 0));
+    });
+
     const today = new Date().toDateString();
     const thisMonth = new Date().getMonth();
     const thisYear = new Date().getFullYear();
@@ -118,10 +171,10 @@ export default function Analytics({ shopData, products }: AnalyticsProps) {
       })
       .reduce((sum, t) => sum + (t.quantity || 0), 0);
 
-    return { totalSales, totalProfit, dailyAverage, topProduct, dailySalesMap, productSalesMap, topProductsList, itemsSoldToday, itemsSoldMonth };
+    return { totalSales, totalCosts, totalExpenses, totalProfit, dailyAverage, topProduct, dailySalesMap, productSalesMap, expenseCategoryMap, topProductsList, itemsSoldToday, itemsSoldMonth };
   };
 
-  const { totalSales, totalProfit, dailyAverage, topProduct, dailySalesMap, productSalesMap, topProductsList, itemsSoldToday, itemsSoldMonth } = calculateMetrics();
+  const { totalSales, totalCosts, totalExpenses, totalProfit, dailyAverage, topProduct, dailySalesMap, productSalesMap, expenseCategoryMap, topProductsList, itemsSoldToday, itemsSoldMonth } = calculateMetrics();
 
   const chartOptions = {
     responsive: true,
@@ -203,6 +256,16 @@ export default function Analytics({ shopData, products }: AnalyticsProps) {
     }],
   };
 
+  const expenseDistributionData = {
+    labels: Array.from(expenseCategoryMap.keys()),
+    datasets: [{
+      data: Array.from(expenseCategoryMap.values()),
+      backgroundColor: ['#f59e0b', '#ef4444', '#8b5cf6', '#10b981', '#6b7280'],
+      borderWidth: 0,
+      hoverOffset: 4
+    }],
+  };
+
   return (
     <div className="space-y-8 pb-10">
       {/* Header */}
@@ -230,9 +293,9 @@ export default function Analytics({ shopData, products }: AnalyticsProps) {
       {/* Hero Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <MetricCard label="Total Sales" value={`₹${totalSales.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`} icon={<DollarSign className="w-6 h-6 text-white" />} color="from-blue-600 to-indigo-600" description="Revenue earned" />
-        <MetricCard label="Total Profit" value={`₹${totalProfit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`} icon={<TrendingUp className="w-6 h-6 text-white" />} color="from-emerald-500 to-teal-500" description="Net earnings" />
+        <MetricCard label="Total Expenses" value={`₹${totalExpenses.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`} icon={<Wallet className="w-6 h-6 text-white" />} color="from-orange-500 to-red-500" description={expenses.length > 0 ? "You spent" : "Not tracked"} />
+        <MetricCard label="Net Profit" value={`₹${totalProfit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`} icon={<TrendingUp className="w-6 h-6 text-white" />} color="from-emerald-500 to-teal-500" description={expenses.length > 0 ? "Sales - Costs - Expenses" : "Sales - Costs"} />
         <MetricCard label="Daily Average" value={`₹${dailyAverage.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`} icon={<Calendar className="w-6 h-6 text-white" />} color="from-violet-500 to-purple-500" description="Per day average" />
-        <MetricCard label="Top Product" value={topProduct} icon={<Package className="w-6 h-6 text-white" />} color="from-orange-500 to-red-500" description="Best performer" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
@@ -251,7 +314,7 @@ export default function Analytics({ shopData, products }: AnalyticsProps) {
             </div>
           </div>
 
-          {/* Sales Distribution Bar Chart Alternative (if needed later) or keep Pie below */}
+          {/* Sales Distribution */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             <h3 className="text-lg font-bold text-gray-800 mb-6">Sales Distribution</h3>
             <div className="h-64 flex justify-center items-center">
@@ -263,6 +326,27 @@ export default function Analytics({ shopData, products }: AnalyticsProps) {
                 <div className="text-gray-400 flex flex-col items-center">
                   <Package size={48} className="mb-2 opacity-20" />
                   <p>No product sales data found.</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Expense Distribution */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
+              <div className="p-2 bg-orange-50 rounded-lg text-orange-600"><Wallet size={20} /></div>
+              Expense Breakdown
+            </h3>
+            <div className="h-64 flex justify-center items-center">
+              {expenses.length > 0 ? (
+                <div className="w-full max-w-md">
+                  <Pie data={expenseDistributionData} options={{ maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { usePointStyle: true, font: { family: "'Inter', sans-serif" } } } } }} />
+                </div>
+              ) : (
+                <div className="text-gray-400 flex flex-col items-center">
+                  <AlertCircle size={48} className="mb-3 opacity-20" />
+                  <p className="font-medium mb-1">Expenses not tracked</p>
+                  <p className="text-sm text-center max-w-xs">Start tracking expenses to see detailed breakdown and improve profit accuracy</p>
                 </div>
               )}
             </div>

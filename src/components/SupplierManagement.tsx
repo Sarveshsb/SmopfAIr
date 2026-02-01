@@ -12,6 +12,7 @@ interface Supplier {
   quality_rating: number;
   average_delivery_days: number | null;
   notes: string | null;
+  product_ids: string[];
 }
 
 interface SupplierManagementProps {
@@ -19,9 +20,10 @@ interface SupplierManagementProps {
     shop_name: string;
     business_type: string;
   };
+  products: any[];
 }
 
-export default function SupplierManagement({ shopData }: SupplierManagementProps) {
+export default function SupplierManagement({ shopData, products }: SupplierManagementProps) {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -37,6 +39,7 @@ export default function SupplierManagement({ shopData }: SupplierManagementProps
     quality_rating: 5,
     average_delivery_days: 3,
     notes: '',
+    product_ids: [] as string[],
   });
 
   useEffect(() => {
@@ -73,6 +76,7 @@ export default function SupplierManagement({ shopData }: SupplierManagementProps
         location: formData.location || null,
         average_delivery_days: formData.average_delivery_days || null,
         notes: formData.notes || null,
+        product_ids: formData.product_ids || [],
       };
       updatedSuppliers = [...suppliers, newSupplier];
     }
@@ -98,6 +102,7 @@ export default function SupplierManagement({ shopData }: SupplierManagementProps
       quality_rating: supplier.quality_rating,
       average_delivery_days: supplier.average_delivery_days || 3,
       notes: supplier.notes || '',
+      product_ids: supplier.product_ids || [],
     });
     setEditingId(supplier.id);
     setShowForm(true);
@@ -114,6 +119,7 @@ export default function SupplierManagement({ shopData }: SupplierManagementProps
       quality_rating: 5,
       average_delivery_days: 3,
       notes: '',
+      product_ids: [],
     });
     setEditingId(null);
     setShowForm(false);
@@ -238,6 +244,21 @@ export default function SupplierManagement({ shopData }: SupplierManagementProps
                   <span className="text-gray-500 flex items-center gap-1.5"><Clock className="w-4 h-4 text-gray-400" /> Delivery Time</span>
                   <span className="font-medium text-gray-900">{supplier.average_delivery_days} days avg</span>
                 </div>
+                {supplier.product_ids && supplier.product_ids.length > 0 && (
+                  <div className="pt-2">
+                    <span className="text-xs text-gray-400 block mb-1">Supplies:</span>
+                    <div className="flex flex-wrap gap-1">
+                      {supplier.product_ids.map(id => {
+                        const product = products.find(p => p.id === id);
+                        return product ? (
+                          <span key={id} className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full border border-blue-100">
+                            {product.product_name}
+                          </span>
+                        ) : null;
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-2">
@@ -311,6 +332,32 @@ export default function SupplierManagement({ shopData }: SupplierManagementProps
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
                 <textarea rows={3} value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Products Supplied</label>
+                <div className="max-h-40 overflow-y-auto p-3 border border-gray-200 rounded-xl space-y-2">
+                  {products.length === 0 ? (
+                    <p className="text-sm text-gray-500 italic">No products available. Add products in the Inventory tab first.</p>
+                  ) : (
+                    products.map(product => (
+                      <label key={product.id} className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-1 rounded-lg transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={formData.product_ids.includes(product.id)}
+                          onChange={(e) => {
+                            const newProductIds = e.target.checked
+                              ? [...formData.product_ids, product.id]
+                              : formData.product_ids.filter(id => id !== product.id);
+                            setFormData({ ...formData, product_ids: newProductIds });
+                          }}
+                          className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-gray-700">{product.product_name}</span>
+                      </label>
+                    ))
+                  )}
+                </div>
               </div>
 
               <div className="pt-4 flex gap-3">

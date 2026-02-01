@@ -1,8 +1,6 @@
 import { useState, useEffect } from "react";
 import Dashboard from "./pages/Dashboard";
 import SetupFlow from "./components/SetupFlow";
-import NotificationCenter from './components/NotificationCenter';
-import Portal from './components/Portal';
 
 function App() {
   const [shopData, setShopData] = useState<{ shop_name: string; business_type: string } | null>(null);
@@ -52,11 +50,6 @@ function App() {
         onProductsChange={loadProducts}
         handleLogout={handleLogout}
       />
-      <Portal>
-        <div className="fixed top-4 right-4 z-[9999]">
-          <NotificationCenter shopData={shopData} products={products} />
-        </div>
-      </Portal>
     </>
   );
 }

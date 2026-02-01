@@ -3,6 +3,7 @@ import Navigation from '../components/Navigation';
 import ProductManagement from '../components/ProductManagement';
 import SupplierManagement from '../components/SupplierManagement';
 import SalesTracking from '../components/SalesTracking';
+import ExpenseTracking from '../components/ExpenseTracking';
 import Analytics from '../components/Analytics';
 import Insights from '../components/Insights';
 import ChatAssistant from '../components/ChatAssistant';
@@ -33,9 +34,11 @@ export default function Dashboard({ shopData, onProductsChange, products, handle
       case 'products':
         return <ProductManagement shopData={shopData} onProductsChange={onProductsChange} />;
       case 'suppliers':
-        return <SupplierManagement shopData={shopData} />;
+        return <SupplierManagement shopData={shopData} products={products} />;
       case 'sales':
         return <SalesTracking shopData={shopData} />;
+      case 'expenses':
+        return <ExpenseTracking shopData={shopData} />;
       case 'analytics':
         return <Analytics shopData={shopData} products={products} />;
       case 'insights':

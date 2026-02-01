@@ -4,9 +4,11 @@ import { Plus, Edit2, Trash2, AlertCircle, Upload, Package, Search, X, CheckCirc
 interface Product {
   id: string;
   product_name: string;
+  category?: string;
   quantity_on_hand: number;
   quantity_unit: string;
   selling_price: number;
+  discount_percentage?: number;
   current_cost_price: number;
   reorder_level: number;
 }
@@ -26,16 +28,23 @@ export default function ProductManagement({ shopData, onProductsChange }: Produc
   const [uploadStatus, setUploadStatus] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [stockFilter, setStockFilter] = useState<'all' | 'low' | 'good'>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     product_name: '',
+    category: 'General',
     quantity_on_hand: 0,
     quantity_unit: 'pieces',
     selling_price: 0,
+    discount_percentage: 0,
     current_cost_price: 0,
     reorder_level: 10,
   });
+
+  const categories = ['General', 'Electronics', 'Clothing', 'Food & Beverages', 'Health & Beauty', 'Home & Garden', 'Sports', 'Toys', 'Books', 'Other'];
+  const uniqueCategories = ['all', ...Array.from(new Set(products.map(p => p.category || 'General')))];
+
 
   useEffect(() => {
     loadProducts();
@@ -81,9 +90,11 @@ export default function ProductManagement({ shopData, onProductsChange }: Produc
   const handleEditProduct = (product: Product) => {
     setFormData({
       product_name: product.product_name,
+      category: product.category || 'General',
       quantity_on_hand: product.quantity_on_hand,
       quantity_unit: product.quantity_unit,
       selling_price: product.selling_price,
+      discount_percentage: product.discount_percentage || 0,
       current_cost_price: product.current_cost_price,
       reorder_level: product.reorder_level,
     });
@@ -94,9 +105,11 @@ export default function ProductManagement({ shopData, onProductsChange }: Produc
   const resetForm = () => {
     setFormData({
       product_name: '',
+      category: 'General',
       quantity_on_hand: 0,
       quantity_unit: 'pieces',
       selling_price: 0,
+      discount_percentage: 0,
       current_cost_price: 0,
       reorder_level: 10,
     });
@@ -169,7 +182,8 @@ export default function ProductManagement({ shopData, onProductsChange }: Produc
       : stockFilter === 'low'
         ? p.quantity_on_hand <= p.reorder_level
         : p.quantity_on_hand > p.reorder_level;
-    return matchesSearch && matchesStock;
+    const matchesCategory = categoryFilter === 'all' || (p.category || 'General') === categoryFilter;
+    return matchesSearch && matchesStock && matchesCategory;
   });
 
   return (
@@ -216,6 +230,15 @@ export default function ProductManagement({ shopData, onProductsChange }: Produc
             <option value="all">All Stock</option>
             <option value="low">Low Stock</option>
             <option value="good">Good Stock</option>
+          </select>
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer"
+          >
+            {uniqueCategories.map(cat => (
+              <option key={cat} value={cat}>{cat === 'all' ? 'All Categories' : cat}</option>
+            ))}
           </select>
         </div>
 
@@ -270,7 +293,7 @@ export default function ProductManagement({ shopData, onProductsChange }: Produc
                 <div className="flex justify-between items-start mb-4">
                   <div>
                     <h3 className="font-bold text-gray-900 text-lg group-hover:text-blue-600 transition-colors">{product.product_name}</h3>
-                    <p className="text-sm text-gray-500">{product.quantity_unit}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{product.category || 'General'} • {product.quantity_unit}</p>
                   </div>
                   <div className={`px-2 py-1 rounded-lg text-xs font-bold ${isLowStock ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
                     {isLowStock ? 'Low Stock' : 'In Stock'}
@@ -294,7 +317,15 @@ export default function ProductManagement({ shopData, onProductsChange }: Produc
                   <div className="flex justify-between items-center pt-2 border-t border-gray-50">
                     <div>
                       <p className="text-xs text-gray-400">Price</p>
-                      <p className="font-bold text-gray-900">₹{product.selling_price}</p>
+                      {product.discount_percentage && product.discount_percentage > 0 ? (
+                        <div>
+                          <p className="text-xs text-gray-400 line-through">₹{product.selling_price}</p>
+                          <p className="font-bold text-green-600">₹{(product.selling_price * (1 - product.discount_percentage / 100)).toFixed(2)}</p>
+                          <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded">{product.discount_percentage}% OFF</span>
+                        </div>
+                      ) : (
+                        <p className="font-bold text-gray-900">₹{product.selling_price}</p>
+                      )}
                     </div>
                     <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button onClick={() => handleEditProduct(product)} className="p-2 hover:bg-gray-100 rounded-lg text-blue-600"><Edit2 className="w-4 h-4" /></button>
@@ -324,10 +355,19 @@ export default function ProductManagement({ shopData, onProductsChange }: Produc
                 <input required type="text" value={formData.product_name} onChange={e => setFormData({ ...formData, product_name: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g. Wireless Mouse" />
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                <select value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+                  {categories.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Stock</label>
-                  <input required type="number" value={formData.quantity_on_hand} onChange={e => setFormData({ ...formData, quantity_on_hand: parseFloat(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" />
+                  <input required type="number" min="0" value={formData.quantity_on_hand} onChange={e => setFormData({ ...formData, quantity_on_hand: Math.max(0, parseFloat(e.target.value)) })} className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Unit</label>
@@ -343,12 +383,21 @@ export default function ProductManagement({ shopData, onProductsChange }: Produc
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Selling Price (₹)</label>
-                  <input required type="number" value={formData.selling_price} onChange={e => setFormData({ ...formData, selling_price: parseFloat(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" />
+                  <input required type="number" min="0" step="0.01" value={formData.selling_price} onChange={e => setFormData({ ...formData, selling_price: Math.max(0, parseFloat(e.target.value)) })} className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Cost Price (₹)</label>
-                  <input type="number" value={formData.current_cost_price} onChange={e => setFormData({ ...formData, current_cost_price: parseFloat(e.target.value) })} className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" />
+                  <input type="number" min="0" step="0.01" value={formData.current_cost_price} onChange={e => setFormData({ ...formData, current_cost_price: Math.max(0, parseFloat(e.target.value)) })} className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Discount (%)</label>
+                <input type="number" min="0" max="100" step="1" value={formData.discount_percentage} onChange={e => setFormData({ ...formData, discount_percentage: Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)) })} className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="0" />
+                <p className="text-xs text-gray-400 mt-1">Optional: Set a discount percentage for this product</p>
+                {formData.discount_percentage > 0 && (
+                  <p className="text-sm text-green-600 mt-2 font-medium">Final Price: ₹{(formData.selling_price * (1 - formData.discount_percentage / 100)).toFixed(2)}</p>
+                )}
               </div>
 
               <div>

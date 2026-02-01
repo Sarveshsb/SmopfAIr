@@ -1,5 +1,6 @@
-import { Store, Package, Users, ShoppingCart, BarChart3, Lightbulb, User, Menu, X, ChevronRight, Settings } from 'lucide-react';
+import { Store, Package, Users, ShoppingCart, Wallet, BarChart3, Lightbulb, User, Menu, X, ChevronRight, Settings } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import NotificationCenter from './NotificationCenter';
 
 type TabType = 'overview' | 'products' | 'suppliers' | 'sales' | 'expenses' | 'analytics' | 'insights' | 'profile';
 
@@ -17,6 +18,7 @@ export default function Navigation({
   shopData,
   activeTab,
   onTabChange,
+  products,
 }: NavigationProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
@@ -49,6 +51,7 @@ export default function Navigation({
     { id: 'products', label: 'Products', icon: Package },
     { id: 'suppliers', label: 'Suppliers', icon: Users },
     { id: 'sales', label: 'Sales', icon: ShoppingCart },
+    { id: 'expenses', label: 'Expenses', icon: Wallet },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
     { id: 'insights', label: 'Insights', icon: Lightbulb },
   ];
@@ -80,14 +83,6 @@ export default function Navigation({
                 </div>
               </div>
 
-              {/* Mobile Menu Button */}
-              <button
-                onClick={() => setMobileMenuOpen(true)}
-                className="md:hidden p-2 text-gray-600 hover:bg-gray-100/50 rounded-xl transition-colors"
-              >
-                <Menu className="w-6 h-6" />
-              </button>
-
               {/* Desktop Tabs */}
               <div className="hidden md:flex items-center p-1 bg-gray-100/50 rounded-2xl border border-gray-200/50">
                 {tabs.map(({ id, label, icon: Icon }) => (
@@ -105,11 +100,12 @@ export default function Navigation({
                 ))}
               </div>
 
-              {/* Desktop Profile */}
-              <div className="hidden md:flex items-center pl-4 border-l border-gray-200/50">
+              {/* Header Right (Profile + Mobile Menu) */}
+              <div className="flex items-center space-x-2">
+                {/* Profile */}
                 <button
                   onClick={handleProfileClick}
-                  className="group flex items-center space-x-3 pl-2 pr-1 py-1 rounded-full hover:bg-gray-50 transition-all border border-transparent hover:border-gray-100"
+                  className="group flex items-center space-x-3 p-1 rounded-full hover:bg-gray-50 transition-all border border-transparent hover:border-gray-100"
                 >
                   <div className="relative">
                     <div className="absolute inset-0 bg-blue-500 rounded-full blur-sm opacity-0 group-hover:opacity-20 transition-opacity"></div>
@@ -124,11 +120,47 @@ export default function Navigation({
                     </div>
                   </div>
                 </button>
+
+                {/* Notification Center */}
+                <NotificationCenter shopData={shopData} products={products} />
+
+                {/* Mobile Extra Menu Button (Optional) */}
+                <button
+                  onClick={() => setMobileMenuOpen(true)}
+                  className="md:hidden p-2 text-gray-600 hover:bg-gray-100/50 rounded-xl transition-colors"
+                >
+                  <Menu className="w-6 h-6" />
+                </button>
               </div>
             </div>
           </div>
         </nav>
       </div>
+
+      {/* Mobile Bottom Navigation Bar */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-4 pb-[calc(16px+env(safe-area-inset-bottom))] pt-2">
+        <div className="bg-white/90 backdrop-blur-sm border border-gray-200/50 shadow-lg rounded-3xl px-2 py-2 flex items-center justify-around translate-y-[-8px]">
+          {tabs.slice(0, 5).map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => onTabChange(id)}
+              className={`flex flex-col items-center justify-center flex-1 py-1 px-1 transition-all duration-300 rounded-2xl min-w-[64px] ${activeTab === id
+                ? 'text-blue-600'
+                : 'text-gray-500 hover:text-gray-700 active:scale-90'
+                }`}
+            >
+              <div className={`p-2 rounded-xl transition-colors duration-300 ${activeTab === id ? 'bg-blue-50 shadow-sm' : 'bg-transparent'
+                }`}>
+                <Icon className={`w-5 h-5 ${activeTab === id ? 'stroke-[2.5]' : 'stroke-[1.5]'}`} />
+              </div>
+              <span className={`text-[10px] font-bold mt-1 tracking-tight ${activeTab === id ? 'opacity-100' : 'opacity-70'
+                }`}>
+                {label}
+              </span>
+            </button>
+          ))}
+        </div>
+      </nav>
 
       {/* Mobile Drawer Overlay */}
       <div
@@ -144,8 +176,8 @@ export default function Navigation({
       >
         <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
           <div>
-            <h2 className="font-bold text-lg text-gray-900">Menu</h2>
-            <p className="text-xs text-gray-500">Navigation</p>
+            <h2 className="font-bold text-lg text-gray-900">More</h2>
+            <p className="text-xs text-gray-500">Shop Settings</p>
           </div>
           <button
             onClick={() => setMobileMenuOpen(false)}
@@ -205,3 +237,4 @@ export default function Navigation({
     </>
   );
 }
+

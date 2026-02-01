@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Mic, MicOff, User, Bot } from 'lucide-react';
+import { MessageCircle, X, Send, Mic, MicOff, User, Bot, Sparkles } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -48,15 +48,7 @@ export default function ChatAssistant({ shopData, products }: ChatAssistantProps
       const welcomeMessage: Message = {
         id: Date.now().toString(),
         type: 'assistant',
-        content: `Hello! 👋 Welcome to SmopfAIr assistant for ${shopData.shop_name}! 
-
-I'm here to help you with:
-• Adding and managing products
-• Understanding analytics and reports  
-• Using SmopfAIr features effectively
-• Answering questions about your ${shopData.business_type.toLowerCase()}
-
-What would you like to know?`,
+        content: `Hello! 👋 Welcome to SmopfAIr assistant for ${shopData.shop_name}!\n\nI'm here to help you with:\n• Adding and managing products\n• Understanding analytics and reports\n• Using SmopfAIr features effectively\n• Answering questions about your ${shopData.business_type.toLowerCase()}\n\nWhat would you like to know?`,
         timestamp: new Date(),
         suggestions: [
           "How to add products?",
@@ -68,6 +60,33 @@ What would you like to know?`,
       setMessages([welcomeMessage]);
     }
   }, [isOpen, shopData]);
+
+  // Helper function to format message content (Markdown-like parser)
+  const formatMessage = (content: string) => {
+    return content.split('\n').map((line, i) => {
+      // Bold text: **text**
+      const parts = line.split(/(\*\*.*?\*\*)/g);
+
+      const formattedLine = parts.map((part, index) => {
+        if (part.startsWith('**') && part.endsWith('**')) {
+          return <strong key={index} className="font-bold">{part.slice(2, -2)}</strong>;
+        }
+        return part;
+      });
+
+      // List items: • item or - item
+      if (line.trim().startsWith('•') || line.trim().startsWith('- ')) {
+        return (
+          <div key={i} className="flex gap-2 ml-2 my-1">
+            <span className="text-blue-500">•</span>
+            <span>{formattedLine.length > 1 ? formattedLine : line.replace(/^[•-]\s*/, '')}</span>
+          </div>
+        );
+      }
+
+      return <div key={i} className={`min-h-[1.2em] ${line.trim() === '' ? 'h-2' : ''}`}>{formattedLine}</div>;
+    });
+  };
 
   const generateAIResponse = (userMessage: string): Message => {
     const lowerMessage = userMessage.toLowerCase();
@@ -89,7 +108,7 @@ What would you like to know?`,
       const totalItems = todaySales.reduce((sum: number, t: any) => sum + t.quantity, 0);
 
       if (lowerMessage.includes('today')) {
-        response = `� **Sales Update (Today):**\n\nYou have sold **${totalItems} items** today, generating **₹${totalRevenue.toFixed(2)}** in revenue.\n\nKeep it up! 🚀`;
+        response = `💰 **Sales Update (Today):**\n\nYou have sold **${totalItems} items** today, generating **₹${totalRevenue.toFixed(2)}** in revenue.\n\nKeep it up! 🚀`;
       } else {
         const allRevenue = transactions.reduce((sum: number, t: any) => sum + t.revenue, 0);
         response = `📊 **Business Performance:**\n\n• **Total Revenue (All Time):** ₹${allRevenue.toFixed(2)}\n• **Today's Revenue:** ₹${totalRevenue.toFixed(2)}\n\nCheck the **Analytics** tab for detailed charts!`;
@@ -123,7 +142,7 @@ What would you like to know?`,
 
     // 3. Help & Features
     else if (lowerMessage.includes('notification') || lowerMessage.includes('alert')) {
-      response = `� **Notifications:**\n\nI'll notify you about:\n• Low stock alerts\n• Daily sales summaries\n• Profit opportunities\n\nCheck the bell icon in the top right!`;
+      response = `🔔 **Notifications:**\n\nI'll notify you about:\n• Low stock alerts\n• Daily sales summaries\n• Profit opportunities\n\nCheck the bell icon in the top right!`;
       suggestions = ["Check stock", "Show analytics"];
     }
 
@@ -182,16 +201,16 @@ What would you like to know?`,
       <div className="fixed bottom-6 right-6 z-50">
         <button
           onClick={() => setIsOpen(true)}
-          className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-4 rounded-full shadow-2xl hover:from-blue-600 hover:to-indigo-700 transition-all transform hover:scale-110 group"
+          className="glass-dark p-4 rounded-full hover:scale-110 transition-all duration-300 group relative border-white/20 bg-indigo-600/80 hover:bg-indigo-600"
         >
-          <MessageCircle className="w-6 h-6" />
-          <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+          <div className="absolute inset-0 bg-blue-500 rounded-full blur-lg opacity-40 group-hover:opacity-60 transition-opacity"></div>
+          <MessageCircle className="w-6 h-6 text-white relative z-10" />
+          <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse border-2 border-slate-900 z-10"></div>
 
           {/* Tooltip */}
-          <div className="absolute bottom-full right-0 mb-2 hidden group-hover:block">
-            <div className="bg-gray-900 text-white text-sm px-3 py-2 rounded-lg whitespace-nowrap">
-              Need help? Chat with AI Assistant
-              <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+          <div className="absolute bottom-full right-0 mb-4 hidden group-hover:block w-48">
+            <div className="glass-dark text-xs px-3 py-2 rounded-xl backdrop-blur-md">
+              Chat with AI Assistant
             </div>
           </div>
         </button>
@@ -199,36 +218,37 @@ What would you like to know?`,
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-20 right-6 w-96 h-[500px] bg-white rounded-2xl shadow-2xl border border-gray-200 z-50 flex flex-col overflow-hidden">
+        <div className="fixed bottom-[calc(24px+env(safe-area-inset-bottom))] right-6 w-[90vw] md:w-96 h-[550px] max-h-[70vh] glass flex flex-col z-50 animate-in slide-in-from-bottom-10 fade-in duration-300">
+
           {/* Header */}
-          <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-4 flex items-center justify-between">
+          <div className="bg-gradient-to-r from-blue-600/90 to-indigo-600/90 backdrop-blur-md p-4 flex items-center justify-between rounded-t-2xl border-b border-white/10">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                <Bot className="w-6 h-6" />
+              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm border border-white/20">
+                <Sparkles className="w-5 h-5 text-yellow-300" />
               </div>
               <div>
-                <h3 className="font-semibold">AI Assistant</h3>
-                <p className="text-sm text-blue-100">SmopfAIr Helper</p>
+                <h3 className="font-bold text-white tracking-wide">SmopfAIr AI</h3>
+                <p className="text-xs text-blue-100/80 font-medium">Always online</p>
               </div>
             </div>
             <button
               onClick={() => setIsOpen(false)}
-              className="p-1 hover:bg-white/20 rounded-full transition"
+              className="p-2 hover:bg-white/20 rounded-full transition text-white/80 hover:text-white"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-gray-50 to-white">
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
             {messages.map((message) => (
               <div
                 key={message.id}
                 className={`flex gap-3 ${message.type === 'user' ? 'flex-row-reverse' : ''}`}
               >
-                <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${message.type === 'user'
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-gray-200 text-gray-600'
+                <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center shadow-sm border border-white/40 ${message.type === 'user'
+                  ? 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white'
+                  : 'bg-white/80 text-indigo-600 backdrop-blur-sm'
                   }`}>
                   {message.type === 'user' ?
                     <User className="w-4 h-4" /> :
@@ -236,32 +256,33 @@ What would you like to know?`,
                   }
                 </div>
 
-                <div className={`flex-1 max-w-xs ${message.type === 'user' ? 'text-right' : ''}`}>
-                  <div className={`inline-block p-3 rounded-lg ${message.type === 'user'
-                    ? 'bg-blue-500 text-white rounded-br-sm'
-                    : 'bg-white border border-gray-200 rounded-bl-sm shadow-sm'
+                <div className={`flex-1 max-w-[85%] ${message.type === 'user' ? 'text-right' : ''}`}>
+                  <div className={`inline-block p-3.5 rounded-2xl shadow-sm backdrop-blur-sm ${message.type === 'user'
+                    ? 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-br-sm'
+                    : 'bg-white/60 border border-white/40 text-gray-800 rounded-bl-sm'
                     }`}>
-                    <div className="text-sm whitespace-pre-line">
-                      {message.content}
+                    <div className="text-sm leading-relaxed text-left">
+                      {formatMessage(message.content)}
                     </div>
                   </div>
 
                   {/* Suggestions */}
                   {message.suggestions && (
-                    <div className="mt-2 space-y-1">
+                    <div className="mt-3 space-y-2 animate-in fade-in duration-500 slide-in-from-left-2">
+                      <p className="text-xs text-gray-500 font-medium ml-1">Suggested:</p>
                       {message.suggestions.map((suggestion, index) => (
                         <button
                           key={index}
                           onClick={() => sendMessage(suggestion)}
-                          className="block w-full text-left text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 px-2 py-1 rounded border border-blue-200 transition"
+                          className="block w-full text-left text-xs bg-white/40 hover:bg-white/80 active:bg-blue-50 text-indigo-700 px-3 py-2 rounded-xl border border-white/40 shadow-sm transition-all duration-200"
                         >
-                          {suggestion}
+                          ✨ {suggestion}
                         </button>
                       ))}
                     </div>
                   )}
 
-                  <div className="text-xs text-gray-400 mt-1">
+                  <div className={`text-[10px] text-gray-400 mt-1 px-1 ${message.type === 'user' ? 'text-right' : 'text-left'}`}>
                     {message.timestamp.toLocaleTimeString([], {
                       hour: '2-digit',
                       minute: '2-digit'
@@ -275,14 +296,14 @@ What would you like to know?`,
 
           {/* Quick Questions */}
           {messages.length <= 1 && (
-            <div className="px-4 py-2 border-t border-gray-100 bg-gray-50">
-              <p className="text-xs text-gray-600 mb-2">Quick questions:</p>
-              <div className="flex flex-wrap gap-1">
-                {quickQuestions.slice(0, 3).map((question, index) => (
+            <div className="px-4 py-3 border-t border-white/20 bg-white/10 backdrop-blur-md">
+              <p className="text-xs text-gray-500 font-medium mb-2 uppercase tracking-wider">Quick actions</p>
+              <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-none">
+                {quickQuestions.slice(0, 4).map((question, index) => (
                   <button
                     key={index}
                     onClick={() => sendMessage(question)}
-                    className="text-xs bg-white hover:bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-200 transition"
+                    className="flex-shrink-0 text-xs bg-white/50 hover:bg-white text-gray-700 px-3 py-1.5 rounded-full border border-white/40 shadow-sm transition whitespace-nowrap"
                   >
                     {question}
                   </button>
@@ -292,7 +313,7 @@ What would you like to know?`,
           )}
 
           {/* Input */}
-          <div className="p-4 border-t border-gray-200 bg-white">
+          <div className="p-4 border-t border-white/20 bg-white/40 backdrop-blur-xl rounded-b-2xl safe-bottom">
             <div className="flex items-center gap-2">
               <div className="flex-1 relative">
                 <input
@@ -301,35 +322,28 @@ What would you like to know?`,
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                  placeholder="Ask me anything about SmopfAIr..."
-                  className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
+                  placeholder="Ask SmopfAIr..."
+                  className="w-full pl-4 pr-10 py-3 bg-white/50 border border-white/30 rounded-full focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 outline-none text-sm placeholder-gray-500 shadow-inner"
                 />
               </div>
 
               <button
                 onClick={handleVoiceToggle}
-                className={`p-2 rounded-full transition ${isListening
-                  ? 'bg-red-100 text-red-600 animate-pulse'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                className={`p-3 rounded-full transition-all duration-200 ${isListening
+                  ? 'bg-red-500 text-white animate-pulse shadow-lg ring-4 ring-red-200'
+                  : 'bg-white/50 text-gray-600 hover:bg-white border border-white/30'
                   }`}
-                title="Voice input (coming soon)"
               >
-                {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
               </button>
 
               <button
                 onClick={() => sendMessage()}
                 disabled={!inputValue.trim()}
-                className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                className="p-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition transform active:scale-95"
               >
-                <Send className="w-4 h-4" />
+                <Send className="w-5 h-5" />
               </button>
-            </div>
-
-            <div className="flex items-center justify-center mt-2">
-              <p className="text-xs text-gray-400">
-                AI Assistant • Voice support coming soon
-              </p>
             </div>
           </div>
         </div>
@@ -338,7 +352,7 @@ What would you like to know?`,
       {/* Backdrop */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/10 z-40"
+          className="fixed inset-0 bg-slate-900/20 backdrop-blur-[2px] z-40 transition-opacity duration-300"
           onClick={() => setIsOpen(false)}
         />
       )}

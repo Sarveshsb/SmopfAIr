@@ -1,3 +1,29 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer components {
+
+  /* Tinted Glass Effect - Better Performance */
+  .glass {
+    @apply bg-white/90 backdrop-blur-sm border border-gray-200/50 text-gray-800 shadow-lg rounded-2xl;
+  }
+
+  .glass-dark {
+    @apply bg-slate-800/90 backdrop-blur-sm border border-slate-700/50 text-white shadow-lg rounded-2xl;
+  }
+
+  /* Enhancing the glass feel with subtle gradients/noise if needed, 
+     but keeping it simple for now to rely on backdrop-blur */
+
+  /* Mobile-first safe area tweaks */
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+body {
+  /* Subtle mesh gradient background to make glass effect visible */
+  background: radial-gradient(circle at top left, #a5b4fc, #eef2ff, #e0e7ff);
+  min-height: 100vh;
+}
