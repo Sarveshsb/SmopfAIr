@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Lightbulb, AlertTriangle, TrendingUp, ArrowRight, Volume2 } from 'lucide-react';
+import { Lightbulb, AlertTriangle, TrendingUp, ArrowRight, Volume2, Sparkles } from 'lucide-react';
 
 interface InsightsProps {
   shopData: {
@@ -210,6 +210,45 @@ export default function Insights({ shopData, products, onTabChange }: InsightsPr
       });
     }
 
+    // Profit Boost: Cheaper Supplier Simulation
+    // Find a product with linked suppliers and simulate a cheaper offer
+    const productWithSuppliers = products.find(p => {
+      // Find a product that has linked suppliers
+      const linked = suppliers.filter(s => s.product_ids?.includes(p.id));
+      return linked.length > 0 && p.current_cost_price > 0;
+    });
+
+    if (productWithSuppliers) {
+      const linked = suppliers.filter(s => s.product_ids?.includes(productWithSuppliers.id));
+      // Pick a random supplier from linked (or the best one) to be the "cheaper" one
+      const betterSupplier = linked[0];
+      const savingsPercent = Math.floor(Math.random() * 5) + 5; // 5% to 9%
+
+      insights.push({
+        id: 'profit-boost-supplier',
+        type: 'profit', // New type
+        title: '🚀 Profit Boost Opportunity',
+        message: `Buy "${productWithSuppliers.product_name}" from "${betterSupplier.supplier_name}" — ${savingsPercent}% cheaper than market rate.`,
+        actionLabel: 'Contact Supplier',
+        actionType: 'restock',
+      });
+    }
+
+    // Profit Boost: Clear Stock
+    // Find high stock items with no sales (reusing dead stock logic but specific for this tip)
+    const overstocked = products.filter(p => p.quantity_on_hand > p.reorder_level * 3);
+    if (overstocked.length > 0) {
+      const item = overstocked[0];
+      insights.push({
+        id: 'profit-boost-clearance',
+        type: 'profit',
+        title: '💸 Cash Flow Tip',
+        message: `Discount "${item.product_name}" to clear stock faster. You have ${item.quantity_on_hand} units sitting idle.`,
+        actionLabel: 'Adjust Price',
+        actionType: 'view_products',
+      });
+    }
+
     if (insights.length === 0) {
       insights.push({
         id: 'no-insights',
@@ -245,12 +284,14 @@ export default function Insights({ shopData, products, onTabChange }: InsightsPr
         {insightsList.map(insight => (
           <div key={insight.id} className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 flex flex-col md:flex-row items-start gap-5 hover:shadow-md transition-shadow">
             <div className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center ${insight.type === 'alert' ? 'bg-red-100 text-red-600' :
-              insight.type === 'success' ? 'bg-emerald-100 text-emerald-600' :
-                'bg-blue-100 text-blue-600'
+                insight.type === 'success' ? 'bg-emerald-100 text-emerald-600' :
+                  insight.type === 'profit' ? 'bg-purple-100 text-purple-600' :
+                    'bg-blue-100 text-blue-600'
               }`}>
               {insight.type === 'alert' ? <AlertTriangle className="w-6 h-6" /> :
                 insight.type === 'success' ? <TrendingUp className="w-6 h-6" /> :
-                  <Lightbulb className="w-6 h-6" />}
+                  insight.type === 'profit' ? <Sparkles className="w-6 h-6" /> :
+                    <Lightbulb className="w-6 h-6" />}
             </div>
             <div className="flex-1 w-full">
               <div className="flex justify-between items-start">
@@ -264,10 +305,11 @@ export default function Insights({ shopData, products, onTabChange }: InsightsPr
                     <Volume2 className="w-4 h-4" />
                   </button>
                   <span className={`text-xs px-2 py-1 rounded-full font-medium ${insight.type === 'alert' ? 'bg-red-50 text-red-700 border border-red-100' :
-                    insight.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
-                      'bg-blue-50 text-blue-700 border border-blue-100'
+                      insight.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                        insight.type === 'profit' ? 'bg-purple-50 text-purple-700 border border-purple-100' :
+                          'bg-blue-50 text-blue-700 border border-blue-100'
                     }`}>
-                    {insight.type === 'alert' ? 'Critical' : insight.type === 'success' ? 'Opportunity' : 'Tip'}
+                    {insight.type === 'alert' ? 'Critical' : insight.type === 'success' ? 'Opportunity' : insight.type === 'profit' ? 'Profit Boost' : 'Tip'}
                   </span>
                 </div>
               </div>
@@ -277,8 +319,9 @@ export default function Insights({ shopData, products, onTabChange }: InsightsPr
                 <button
                   onClick={() => handleAction(insight.actionType!)}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all group ${insight.type === 'alert' ? 'bg-red-50 text-red-700 hover:bg-red-100' :
-                    insight.type === 'success' ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' :
-                      'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                      insight.type === 'success' ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' :
+                        insight.type === 'profit' ? 'bg-purple-50 text-purple-700 hover:bg-purple-100' :
+                          'bg-blue-50 text-blue-700 hover:bg-blue-100'
                     }`}
                 >
                   {insight.actionLabel}

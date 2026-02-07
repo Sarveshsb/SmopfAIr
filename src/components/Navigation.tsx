@@ -72,8 +72,8 @@ export default function Navigation({
               {/* Logo Section */}
               <div className="flex items-center space-x-3 group cursor-pointer" onClick={() => onTabChange('overview')}>
                 <div className="relative">
-                  <div className="absolute inset-0 bg-blue-500 rounded-xl blur opacity-20 group-hover:opacity-40 transition-opacity"></div>
-                  <div className="relative flex items-center justify-center w-10 h-10 bg-white rounded-xl shadow-inner overflow-hidden border border-white/10">
+                  <div className="absolute inset-0 bg-blue-500 rounded-full blur opacity-20 group-hover:opacity-40 transition-opacity"></div>
+                  <div className="relative flex items-center justify-center w-10 h-10 bg-white rounded-full shadow-inner overflow-hidden border border-white/10">
                     <img src="/logo.jpg" alt="SmopfAIr" className="w-full h-full object-cover" />
                   </div>
                 </div>

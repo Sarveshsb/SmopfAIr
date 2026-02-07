@@ -69,7 +69,7 @@ export default function SetupFlow({ onComplete }: SetupFlowProps) {
       <div className="max-w-xl w-full relative z-10">
         <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-2xl p-8 border border-white/50">
           <div className="flex justify-center mb-6">
-            <div className="flex items-center justify-center w-20 h-20 bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+            <div className="flex items-center justify-center w-20 h-20 bg-white rounded-full shadow-lg border border-gray-100 overflow-hidden">
               <img src="/logo.jpg" alt="SmopfAIr" className="w-full h-full object-cover" />
             </div>
           </div>
