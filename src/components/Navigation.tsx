@@ -64,34 +64,34 @@ export default function Navigation({
     <>
       <div className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'pt-2 px-4' : 'pt-6 px-6'}`}>
         <nav className={`mx-auto max-w-7xl transition-all duration-300 ${scrolled
-          ? 'bg-white/90 backdrop-blur-xl shadow-lg rounded-2xl border border-white/20'
-          : 'bg-white/70 backdrop-blur-md shadow-sm rounded-3xl border border-white/40'
+          ? 'bg-[#1E293B]/95 backdrop-blur-xl shadow-lg rounded-2xl border border-slate-700/50'
+          : 'bg-[#1E293B] shadow-lg rounded-3xl border border-slate-800'
           }`}>
           <div className="px-6">
             <div className="flex justify-between items-center h-16">
               {/* Logo Section */}
               <div className="flex items-center space-x-3 group cursor-pointer" onClick={() => onTabChange('overview')}>
                 <div className="relative">
-                  <div className="absolute inset-0 bg-blue-500 rounded-full blur opacity-20 group-hover:opacity-40 transition-opacity"></div>
-                  <div className="relative flex items-center justify-center w-10 h-10 bg-white rounded-full shadow-inner overflow-hidden border border-white/10">
-                    <img src="/logo.jpg" alt="SmopfAIr" className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-emerald-500 rounded-full blur opacity-20 group-hover:opacity-40 transition-opacity"></div>
+                  <div className="relative flex items-center justify-center w-10 h-10 bg-slate-800 rounded-full shadow-inner overflow-hidden border border-slate-700">
+                    <img src="/logo.jpg" alt="SmopfAIr" className="w-full h-full object-cover opacity-90 hover:opacity-100 transition-opacity" />
                   </div>
                 </div>
                 <div>
-                  <h1 className="font-bold text-gray-900 text-lg tracking-tight group-hover:text-blue-600 transition-colors">SmopfAIr</h1>
-                  <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">{shopData.shop_name}</p>
+                  <h1 className="font-bold text-white text-lg tracking-tight group-hover:text-emerald-400 transition-colors">SmopfAIr</h1>
+                  <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">{shopData.shop_name}</p>
                 </div>
               </div>
 
               {/* Desktop Tabs */}
-              <div className="hidden md:flex items-center p-1 bg-gray-100/50 rounded-2xl border border-gray-200/50">
+              <div className="hidden md:flex items-center p-1 bg-slate-800/50 rounded-2xl border border-slate-700">
                 {tabs.map(({ id, label, icon: Icon }) => (
                   <button
                     key={id}
                     onClick={() => onTabChange(id)}
-                    className={`relative flex items-center space-x-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${activeTab === id
-                      ? 'bg-white text-blue-600 shadow-sm ring-1 ring-black/5'
-                      : 'text-gray-500 hover:text-gray-900 hover:bg-gray-200/50'
+                    className={`relative flex items-center space-x-1.5 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-300 ${activeTab === id
+                      ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-900/20 transform scale-105'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
                       }`}
                   >
                     <Icon className={`w-4 h-4 ${activeTab === id ? 'stroke-2' : 'stroke-[1.5]'}`} />
@@ -105,15 +105,15 @@ export default function Navigation({
                 {/* Profile */}
                 <button
                   onClick={handleProfileClick}
-                  className="group flex items-center space-x-3 p-1 rounded-full hover:bg-gray-50 transition-all border border-transparent hover:border-gray-100"
+                  className="group flex items-center space-x-3 p-1 rounded-full hover:bg-slate-800 transition-all border border-transparent hover:border-slate-700"
                 >
                   <div className="relative">
-                    <div className="absolute inset-0 bg-blue-500 rounded-full blur-sm opacity-0 group-hover:opacity-20 transition-opacity"></div>
-                    <div className="relative w-9 h-9 rounded-full bg-gray-200 overflow-hidden ring-2 ring-white shadow-sm group-hover:ring-blue-100 transition-all">
+                    <div className="absolute inset-0 bg-emerald-500 rounded-full blur-sm opacity-0 group-hover:opacity-20 transition-opacity"></div>
+                    <div className="relative w-9 h-9 rounded-full bg-slate-800 overflow-hidden ring-2 ring-slate-700 shadow-sm group-hover:ring-emerald-500/50 transition-all">
                       {profilePhoto ? (
                         <img src={profilePhoto} alt="Profile" className="w-full h-full object-cover" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400">
+                        <div className="w-full h-full flex items-center justify-center bg-slate-800 text-slate-400">
                           <User className="w-4 h-4" />
                         </div>
                       )}
@@ -127,7 +127,7 @@ export default function Navigation({
                 {/* Mobile Extra Menu Button (Optional) */}
                 <button
                   onClick={() => setMobileMenuOpen(true)}
-                  className="md:hidden p-2 text-gray-600 hover:bg-gray-100/50 rounded-xl transition-colors"
+                  className="md:hidden p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors"
                 >
                   <Menu className="w-6 h-6" />
                 </button>
@@ -139,17 +139,17 @@ export default function Navigation({
 
       {/* Mobile Bottom Navigation Bar */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-4 pb-[calc(16px+env(safe-area-inset-bottom))] pt-2">
-        <div className="bg-white/90 backdrop-blur-sm border border-gray-200/50 shadow-lg rounded-3xl px-2 py-2 flex items-center justify-around translate-y-[-8px]">
+        <div className="bg-[#1E293B]/95 backdrop-blur-md border border-slate-700/50 shadow-xl rounded-3xl px-2 py-2 flex items-center justify-around translate-y-[-8px]">
           {tabs.slice(0, 5).map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               onClick={() => onTabChange(id)}
               className={`flex flex-col items-center justify-center flex-1 py-1 px-1 transition-all duration-300 rounded-2xl min-w-[64px] ${activeTab === id
-                ? 'text-blue-600'
-                : 'text-gray-500 hover:text-gray-700 active:scale-90'
+                ? 'text-white'
+                : 'text-slate-500 hover:text-slate-300 active:scale-90'
                 }`}
             >
-              <div className={`p-2 rounded-xl transition-colors duration-300 ${activeTab === id ? 'bg-blue-50 shadow-sm' : 'bg-transparent'
+              <div className={`p-2 rounded-xl transition-colors duration-300 ${activeTab === id ? 'bg-emerald-500 shadow-lg shadow-emerald-900/20' : 'bg-transparent'
                 }`}>
                 <Icon className={`w-5 h-5 ${activeTab === id ? 'stroke-[2.5]' : 'stroke-[1.5]'}`} />
               </div>
@@ -164,24 +164,24 @@ export default function Navigation({
 
       {/* Mobile Drawer Overlay */}
       <div
-        className={`fixed inset-0 z-[60] bg-gray-900/20 backdrop-blur-sm transition-opacity duration-300 md:hidden ${mobileMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        className={`fixed inset-0 z-[60] bg-slate-900/50 backdrop-blur-sm transition-opacity duration-300 md:hidden ${mobileMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
           }`}
         onClick={() => setMobileMenuOpen(false)}
       />
 
       {/* Mobile Drawer */}
       <div
-        className={`fixed inset-y-0 right-0 z-[70] w-72 bg-white shadow-2xl transform transition-transform duration-300 ease-out md:hidden flex flex-col ${mobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
+        className={`fixed inset-y-0 right-0 z-[70] w-72 bg-[#1E293B] shadow-2xl transform transition-transform duration-300 ease-out md:hidden flex flex-col border-l border-slate-800 ${mobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
           }`}
       >
-        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+        <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
           <div>
-            <h2 className="font-bold text-lg text-gray-900">More</h2>
-            <p className="text-xs text-gray-500">Shop Settings</p>
+            <h2 className="font-bold text-lg text-white">More</h2>
+            <p className="text-xs text-slate-400">Shop Settings</p>
           </div>
           <button
             onClick={() => setMobileMenuOpen(false)}
-            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+            className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -196,45 +196,44 @@ export default function Navigation({
                 setMobileMenuOpen(false);
               }}
               className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl transition-all ${activeTab === id
-                ? 'bg-blue-50 text-blue-700 font-semibold shadow-sm border border-blue-100'
-                : 'text-gray-600 hover:bg-gray-50 border border-transparent'
+                ? 'bg-emerald-500/10 text-emerald-400 font-semibold shadow-sm border border-emerald-500/20'
+                : 'text-slate-400 hover:bg-slate-800 border border-transparent'
                 }`}
             >
               <div className="flex items-center space-x-3">
-                <Icon className={`w-5 h-5 ${activeTab === id ? 'text-blue-600' : 'text-gray-400'}`} />
+                <Icon className={`w-5 h-5 ${activeTab === id ? 'text-emerald-400' : 'text-slate-500'}`} />
                 <span>{label}</span>
               </div>
-              {activeTab === id && <ChevronRight className="w-4 h-4 text-blue-400" />}
+              {activeTab === id && <ChevronRight className="w-4 h-4 text-emerald-400" />}
             </button>
           ))}
         </div>
 
-        <div className="p-4 border-t border-gray-100 bg-gray-50/30">
+        <div className="p-4 border-t border-slate-800 bg-slate-900/30">
           <button
             onClick={() => {
               handleProfileClick();
               setMobileMenuOpen(false);
             }}
-            className="w-full flex items-center space-x-3 p-3 rounded-xl bg-white border border-gray-200 shadow-sm hover:shadow-md transition-all active:scale-[0.98]"
+            className="w-full flex items-center space-x-3 p-3 rounded-xl bg-slate-800 border border-slate-700 shadow-sm hover:shadow-md transition-all active:scale-[0.98]"
           >
-            <div className="w-10 h-10 rounded-full bg-gray-100 overflow-hidden ring-2 ring-white shadow-sm flex-shrink-0">
+            <div className="w-10 h-10 rounded-full bg-slate-700 overflow-hidden ring-2 ring-slate-600 shadow-sm flex-shrink-0">
               {profilePhoto ? (
                 <img src={profilePhoto} alt="Profile" className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                  <User className="w-4 h-4 text-gray-500" />
+                <div className="w-full h-full flex items-center justify-center bg-slate-700">
+                  <User className="w-4 h-4 text-slate-400" />
                 </div>
               )}
             </div>
             <div className="text-left flex-1 min-w-0">
-              <p className="font-semibold text-gray-900 truncate">My Profile</p>
-              <p className="text-xs text-gray-500 truncate">View Settings</p>
+              <p className="font-semibold text-white truncate">My Profile</p>
+              <p className="text-xs text-slate-400 truncate">View Settings</p>
             </div>
-            <Settings className="w-4 h-4 text-gray-400" />
+            <Settings className="w-4 h-4 text-slate-500" />
           </button>
         </div>
       </div>
     </>
   );
 }
-

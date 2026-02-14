@@ -126,7 +126,7 @@ export default function NotificationCenter({ shopData, products }: NotificationC
 
       {/* Notification Panel */}
       {isOpen && (
-        <div className="absolute right-0 top-12 w-96 max-w-sm bg-white rounded-lg shadow-2xl border border-gray-200 z-50 max-h-96 overflow-hidden">
+        <div className="fixed left-4 right-4 top-20 md:absolute md:left-auto md:right-0 md:top-12 md:max-h-96 w-auto md:w-96 max-w-sm bg-white rounded-lg shadow-2xl border border-gray-200 z-50 overflow-hidden">
           <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>

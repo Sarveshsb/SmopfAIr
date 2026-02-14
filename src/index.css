@@ -23,7 +23,23 @@
 }
 
 body {
-  /* Subtle mesh gradient background to make glass effect visible */
-  background: radial-gradient(circle at top left, #a5b4fc, #eef2ff, #e0e7ff);
+  /* Growth & Clarity Theme - Soft Mode */
+  background-color: #F8FAFC;
+  color: #1E293B;
+  /* Deep Midnight Blue for text */
+  margin: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
 }
+
+/* Theme Utilities */
+:root {
+  --color-navy: #1E293B;
+  --color-emerald: #10B981;
+  --color-soft-gray: #F8FAFC;
+}
+
+/* Decorative background pattern overlay */
+/* Clean background - no decorative patterns for Growth & Clarity theme */

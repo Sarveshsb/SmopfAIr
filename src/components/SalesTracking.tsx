@@ -177,7 +177,7 @@ export default function SalesTracking({ shopData }: SalesTrackingProps) {
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div className="flex flex-col lg:grid lg:grid-cols-2 gap-6 mb-6">
             <div className="col-span-2">
               <label className="block text-sm font-semibold text-gray-700 mb-2">Select Product</label>
               <div className="relative">
@@ -199,16 +199,16 @@ export default function SalesTracking({ shopData }: SalesTrackingProps) {
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Quantity</label>
-              <div className="flex items-center">
-                <button onClick={() => handleQuantityChange(quantitySold - 1)} className="w-12 h-12 flex items-center justify-center bg-gray-100 rounded-l-xl hover:bg-gray-200 active:scale-95 transition text-gray-600 font-bold text-lg">-</button>
+              <div className="flex items-center w-full max-w-full">
+                <button onClick={() => handleQuantityChange(quantitySold - 1)} className="w-12 h-12 flex-shrink-0 flex items-center justify-center bg-gray-100 rounded-l-xl hover:bg-gray-200 active:scale-95 transition text-gray-600 font-bold text-lg">-</button>
                 <input
                   type="number"
                   value={quantitySold}
                   onChange={(e) => handleQuantityChange(Number(e.target.value))}
-                  className="w-full h-12 text-center border-y border-gray-200 focus:ring-0 outline-none font-bold text-lg text-gray-900"
+                  className="w-full h-12 text-center border-y border-gray-200 focus:ring-0 outline-none font-bold text-lg text-gray-900 min-w-[3rem]"
                   min="1"
                 />
-                <button onClick={() => handleQuantityChange(quantitySold + 1)} className="w-12 h-12 flex items-center justify-center bg-gray-100 rounded-r-xl hover:bg-gray-200 active:scale-95 transition text-gray-600 font-bold text-lg">+</button>
+                <button onClick={() => handleQuantityChange(quantitySold + 1)} className="w-12 h-12 flex-shrink-0 flex items-center justify-center bg-gray-100 rounded-r-xl hover:bg-gray-200 active:scale-95 transition text-gray-600 font-bold text-lg">+</button>
               </div>
               {stockWarning && (
                 <p className="text-sm text-red-600 mt-2 flex items-center gap-1">
@@ -250,8 +250,8 @@ export default function SalesTracking({ shopData }: SalesTrackingProps) {
               onClick={handleRecordSale}
               disabled={!!stockWarning || !selectedProduct}
               className={`px-8 py-3 rounded-xl font-bold shadow-lg flex items-center gap-2 transition-all ${stockWarning || !selectedProduct
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-blue-600 text-white shadow-blue-200 hover:bg-blue-700 hover:scale-[1.02] active:scale-[0.98]'
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : 'bg-blue-600 text-white shadow-blue-200 hover:bg-blue-700 hover:scale-[1.02] active:scale-[0.98]'
                 }`}
             >
               <CheckCircle className="w-5 h-5" /> Confirm Sale

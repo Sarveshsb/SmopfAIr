@@ -1,12 +1,15 @@
-import { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Mic, MicOff, User, Bot, Sparkles } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { MessageCircle, X, Send, Mic, MicOff, User, Bot, Sparkles, Volume2, VolumeX, AlertCircle } from 'lucide-react';
+import { useSpeech } from '../hooks/useSpeech';
+import { validationEngine } from '../lib/validationEngine';
 
 interface Message {
   id: string;
-  type: 'user' | 'assistant';
+  type: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: Date;
   suggestions?: string[];
+  isError?: boolean;
 }
 
 interface ChatAssistantProps {
@@ -21,7 +24,8 @@ export default function ChatAssistant({ shopData, products }: ChatAssistantProps
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
-  const [isListening, setIsListening] = useState(false);
+  const [voiceOutputEnabled, setVoiceOutputEnabled] = useState(true);
+  const { isListening, transcript, confidence, startListening, stopListening, speak } = useSpeech();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -88,7 +92,7 @@ export default function ChatAssistant({ shopData, products }: ChatAssistantProps
     });
   };
 
-  const generateAIResponse = (userMessage: string): Message => {
+  const generateAIResponse = useCallback((userMessage: string): Message => {
     const lowerMessage = userMessage.toLowerCase();
     let response = '';
     let suggestions: string[] = [];
@@ -108,54 +112,54 @@ export default function ChatAssistant({ shopData, products }: ChatAssistantProps
       const totalItems = todaySales.reduce((sum: number, t: any) => sum + t.quantity, 0);
 
       if (lowerMessage.includes('today')) {
-        response = `💰 **Sales Update (Today):**\n\nYou have sold **${totalItems} items** today, generating **₹${totalRevenue.toFixed(2)}** in revenue.\n\nKeep it up! 🚀`;
+        response = `💰 **Today:** Sold **${totalItems} units**, ₹**${totalRevenue.toFixed(0)}** revenue.`;
       } else {
         const allRevenue = transactions.reduce((sum: number, t: any) => sum + t.revenue, 0);
-        response = `📊 **Business Performance:**\n\n• **Total Revenue (All Time):** ₹${allRevenue.toFixed(2)}\n• **Today's Revenue:** ₹${totalRevenue.toFixed(2)}\n\nCheck the **Analytics** tab for detailed charts!`;
+        response = `📊 **Performance:**\n• Total: ₹**${allRevenue.toFixed(0)}**\n• Today: ₹**${totalRevenue.toFixed(0)}**\n\nCheck **Analytics** for charts.`;
       }
-      suggestions = ["Show me today's sales", "What is my total revenue?", "Best selling product?"];
+      suggestions = ["Today's sales", "Total revenue", "Best seller"];
     }
 
     // 2. Product & Stock Context
     else if (lowerMessage.includes('product') || lowerMessage.includes('stock') || lowerMessage.includes('inventory') || lowerMessage.includes('bestseller') || lowerMessage.includes('best seller')) {
       if (lowerMessage.includes('low') || lowerMessage.includes('alert')) {
         const lowStock = products.filter(p => p.quantity_on_hand <= p.reorder_level);
-        response = `⚠️ **Low Stock Alert:**\n\nYou have **${lowStock.length} products** running low on stock.\n${lowStock.length > 0 ? `Example: ${lowStock[0].product_name} (${lowStock[0].quantity_on_hand} left).` : 'Everything looks good!'} \n\nCheck **Insights** for the full list.`;
-        suggestions = ["Reorder products", "View inventory"];
+        response = lowStock.length > 0
+          ? `⚠️ **Action Needed:** ${lowStock.length} items low. e.g., **${lowStock[0].product_name}** (${lowStock[0].quantity_on_hand} left).`
+          : `✅ Stock levels are healthy!`;
+        suggestions = ["Reorder now", "View inventory"];
       } else if (lowerMessage.includes('best') || lowerMessage.includes('top')) {
         const transactions: any[] = getTransactions();
         const salesMap = new Map<string, number>();
         transactions.forEach((t: any) => salesMap.set(t.productName, (salesMap.get(t.productName) || 0) + t.quantity));
         const sorted = Array.from(salesMap.entries()).sort((a, b) => b[1] - a[1]);
 
-        if (sorted.length > 0) {
-          response = `🏆 **Best Seller:**\n\nYour top product is **${sorted[0][0]}** with **${sorted[0][1]} units** sold!\n\nUse this insight to plan your next restocking.`;
-        } else {
-          response = "I need more sales data to determine your best seller. Start recording transactions!";
-        }
-        suggestions = ["Show revenue", "Low stock items"];
+        response = sorted.length > 0
+          ? `🏆 **Top Seller:** **${sorted[0][0]}** (${sorted[0][1]} units sold).`
+          : "No sales data yet. Record a sale to see trends!";
+        suggestions = ["Revenue", "Low stock"];
       } else {
-        response = `📦 **Inventory Status:**\n\nYou currently have **${products.length} unique products** in your inventory.\n\nNeed to add more? Go to the **Products** tab.`;
-        suggestions = ["How to bulk upload?", "What is dead stock?", "Add new product"];
+        response = `📦 **Inventory:** **${products.length} products** tracked. Go to **Products** to add more.`;
+        suggestions = ["Bulk upload", "Add product"];
       }
     }
 
     // 3. Help & Features
     else if (lowerMessage.includes('notification') || lowerMessage.includes('alert')) {
-      response = `🔔 **Notifications:**\n\nI'll notify you about:\n• Low stock alerts\n• Daily sales summaries\n• Profit opportunities\n\nCheck the bell icon in the top right!`;
-      suggestions = ["Check stock", "Show analytics"];
+      response = `🔔 I'll alert you for:\n• Low stock\n• Sales summaries\n• Profit tips`;
+      suggestions = ["Check stock", "Analytics"];
     }
 
     // 4. Greeting / General
     else if (lowerMessage.includes('hello') || lowerMessage.includes('hi') || lowerMessage.includes('hey')) {
-      response = `Hello! 👋 I'm your **SmopfAIr Assistant**.\n\nAsk me about your **sales, inventory, or suppliers**. I can analyze your data in real-time!`;
-      suggestions = ["How much did I sell today?", "What is low stock?", "Who is my best supplier?"];
+      response = `Hi! 👋 I'm your assistant. Ask about **sales, stock, or suppliers**.`;
+      suggestions = ["Sales today", "Low stock", "Best supplier"];
     }
 
     // Default Fallback
     else {
-      response = `🤔 **I can help with that!**\n\nTry asking me about:\n\n• **"Sales today"**\n• **"Low stock items"**\n• **"Best selling product"**\n• **"Total revenue"**\n\nI'm connected to your shop's live data!`;
-      suggestions = ["Sales today", "Inventory status", "Supplier help"];
+      response = `🤔 I can help with:\n• **"Sales today"**\n• **"Low stock"**\n• **"Top product"**\n\nWhat can I look up for you?`;
+      suggestions = ["Sales today", "Inventory", "Suppliers"];
     }
 
     return {
@@ -165,11 +169,41 @@ export default function ChatAssistant({ shopData, products }: ChatAssistantProps
       timestamp: new Date(),
       suggestions: suggestions.length > 0 ? suggestions : undefined
     };
-  };
+  }, [shopData, products]);
 
-  const sendMessage = (content?: string) => {
+  const showValidationError = useCallback((message: string) => {
+    const errorMsg: Message = {
+      id: Date.now().toString(),
+      type: 'assistant',
+      content: `⚠️ ${message}`,
+      timestamp: new Date(),
+      isError: true
+    };
+    setMessages(prev => [...prev, errorMsg]);
+  }, []);
+
+  const sendMessage = useCallback((content?: string) => {
     const messageContent = content || inputValue.trim();
     if (!messageContent) return;
+
+    // Detection for validation (e.g., adding prices or quantities)
+    const priceMatch = messageContent.match(/price\s*[:=]?\s*(\d+)/i) || messageContent.match(/(\d+)\s*rupees/i);
+    if (priceMatch) {
+      const validation = validationEngine.validate(priceMatch[1], 'price');
+      if (!validation.isValid) {
+        showValidationError(validation.message!);
+        return;
+      }
+    }
+
+    const qtyMatch = messageContent.match(/qty\s*[:=]?\s*(\d+)/i) || messageContent.match(/quantity\s*[:=]?\s*(\d+)/i);
+    if (qtyMatch) {
+      const validation = validationEngine.validate(qtyMatch[1], 'quantity');
+      if (!validation.isValid) {
+        showValidationError(validation.message!);
+        return;
+      }
+    }
 
     // Add user message
     const userMessage: Message = {
@@ -187,18 +221,46 @@ export default function ChatAssistant({ shopData, products }: ChatAssistantProps
       const aiResponse = generateAIResponse(messageContent);
       setMessages(prev => [...prev, aiResponse]);
     }, 1000);
-  };
+  }, [inputValue, generateAIResponse, showValidationError]);
 
-  const handleVoiceToggle = () => {
-    setIsListening(!isListening);
-    // Voice functionality would be implemented here
-    setTimeout(() => setIsListening(false), 3000); // Auto-stop after 3 seconds for demo
-  };
+  const handleVoiceToggle = useCallback(() => {
+    if (isListening) {
+      stopListening();
+    } else {
+      startListening(navigator.language || 'en-US');
+    }
+  }, [isListening, stopListening, startListening]);
+
+  useEffect(() => {
+    if (transcript && !isListening) {
+      if (confidence < 0.6) {
+        const systemMsg: Message = {
+          id: Date.now().toString(),
+          type: 'system',
+          content: `I heard: "${transcript}". Is that correct?`,
+          timestamp: new Date(),
+          suggestions: ['Yes', 'No, let me repeat'],
+        };
+        setMessages(prev => [...prev, systemMsg]);
+      } else {
+        sendMessage(transcript);
+      }
+    }
+  }, [transcript, isListening, confidence, sendMessage]);
+
+  useEffect(() => {
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage?.type === 'assistant' && voiceOutputEnabled) {
+      // Clean content for cleaner speech (remove markdown)
+      const cleanContent = lastMessage.content.replace(/\*\*/g, '').replace(/•/g, '');
+      speak(cleanContent);
+    }
+  }, [messages, voiceOutputEnabled, speak]);
 
   return (
     <>
       {/* Chat Button */}
-      <div className="fixed bottom-6 right-6 z-50">
+      <div className="fixed bottom-32 md:bottom-6 right-6 z-50">
         <button
           onClick={() => setIsOpen(true)}
           className="glass-dark p-4 rounded-full hover:scale-110 transition-all duration-300 group relative border-white/20 bg-indigo-600/80 hover:bg-indigo-600"
@@ -231,12 +293,21 @@ export default function ChatAssistant({ shopData, products }: ChatAssistantProps
                 <p className="text-xs text-blue-100/80 font-medium">Always online</p>
               </div>
             </div>
-            <button
-              onClick={() => setIsOpen(false)}
-              className="p-2 hover:bg-white/20 rounded-full transition text-white/80 hover:text-white"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setVoiceOutputEnabled(!voiceOutputEnabled)}
+                className="p-2 hover:bg-white/20 rounded-full transition text-white/80 hover:text-white"
+                title={voiceOutputEnabled ? 'Disable Voice Output' : 'Enable Voice Output'}
+              >
+                {voiceOutputEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+              </button>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="p-2 hover:bg-white/20 rounded-full transition text-white/80 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </div>
 
           {/* Messages */}
@@ -259,9 +330,14 @@ export default function ChatAssistant({ shopData, products }: ChatAssistantProps
                 <div className={`flex-1 max-w-[85%] ${message.type === 'user' ? 'text-right' : ''}`}>
                   <div className={`inline-block p-3.5 rounded-2xl shadow-sm backdrop-blur-sm ${message.type === 'user'
                     ? 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-br-sm'
-                    : 'bg-white/60 border border-white/40 text-gray-800 rounded-bl-sm'
+                    : message.type === 'system'
+                      ? 'bg-amber-100/80 border border-amber-300 text-amber-900 rounded-bl-sm'
+                      : message.isError
+                        ? 'bg-red-50/90 border border-red-200 text-red-800 rounded-bl-sm'
+                        : 'bg-white/60 border border-white/40 text-gray-800 rounded-bl-sm'
                     }`}>
                     <div className="text-sm leading-relaxed text-left">
+                      {message.isError && <AlertCircle className="w-4 h-4 inline mr-2 mb-1" />}
                       {formatMessage(message.content)}
                     </div>
                   </div>
